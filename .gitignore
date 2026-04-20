@@ -56,9 +56,3 @@ REDESIGN-PLAN.md
 *.ai
 *.psd
 *.tsbuildinfo
-
-.vercel
-.env*.local
-
-.vercel
-.env*.local

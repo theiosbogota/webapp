@@ -25,19 +25,12 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [boldReady, setBoldReady] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const boldContainerRef = useRef<HTMLDivElement>(null);
 
-  // Wait for zustand persist to rehydrate from localStorage
+  // Wait for client-side mount (zustand persist hydrates from localStorage after mount)
   useEffect(() => {
-    const unsub = useCartStore.persist.onFinishHydration(() => {
-      setHydrated(true);
-    });
-    // Already hydrated?
-    if (useCartStore.persist.hasHydrated()) {
-      setHydrated(true);
-    }
-    return unsub;
+    setMounted(true);
   }, []);
 
   const subtotal = getTotal();
@@ -209,8 +202,8 @@ export default function CheckoutPage() {
     router.push(`/checkout/confirmacion?order=${result.orderId}`);
   }
 
-  // Don't show "empty cart" until we've hydrated from localStorage
-  if (!hydrated) {
+  // Don't show "empty cart" until client-side mount (zustand persist needs localStorage)
+  if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

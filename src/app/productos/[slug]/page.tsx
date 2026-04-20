@@ -176,12 +176,14 @@ export default function ProductDetailPage() {
                     {product.store.verified && (
                       <CheckCircle2 className="h-4 w-4 text-blue-500" />
                     )}
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">
-                        {product.store.rating.toFixed(1)}
-                      </span>
-                    </div>
+                    {product.store.rating != null && (
+                      <div className="flex items-center gap-1">
+                        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm">
+                          {product.store.rating.toFixed(1)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -239,7 +241,7 @@ export default function ProductDetailPage() {
               {/* Description */}
               <div>
                 <h3 className="font-semibold mb-2">Descripción</h3>
-                <p className="text-muted-foreground">{product.description}</p>
+                <p className="text-muted-foreground">{product.description || "Sin descripción disponible"}</p>
               </div>
 
               <Separator />

@@ -57,7 +57,7 @@ export function CartSidebar({ open, onClose }: CartSidebarProps) {
                     key={item.product.id}
                     className="flex gap-3 p-3 rounded-lg border bg-card"
                   >
-                    <div className="relative h-20 w-20 bg-white flex-shrink-0 rounded-md overflow-hidden">
+                    <div className="relative h-20 w-20 bg-muted/30 flex-shrink-0 rounded-md overflow-hidden">
                       {item.product.images?.[0] ? (
                         <Image
                           src={item.product.images[0]}

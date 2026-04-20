@@ -1,8 +1,8 @@
 // Bold Payment Gateway Integration
 // Docs: https://developers.bold.co/pagos-en-linea/boton-de-pagos/integracion-manual/integracion-manual
 
-const BOLD_API_KEY = process.env.NEXT_PUBLIC_BOLD_API_KEY || "";
-const BOLD_SECRET_KEY = process.env.BOLD_SECRET_KEY || ""; // Server-side only!
+const BOLD_API_KEY = (process.env.NEXT_PUBLIC_BOLD_API_KEY || "").trim();
+const BOLD_SECRET_KEY = (process.env.BOLD_SECRET_KEY || "").trim(); // Server-side only!
 // Environment is determined by which API key is used (test vs production)
 
 export function getBoldApiKey(): string {

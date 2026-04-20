@@ -156,6 +156,14 @@ export default function CheckoutPage() {
       // and unmount the Bold container before Bold can render its button.
       // Cart will be cleared after Bold redirects to confirmation page.
 
+      // Reload Bold library so it picks up the newly inserted data-bold-button script
+      const existingBoldLib = document.querySelector('script[src*="boldPaymentButton"]');
+      if (existingBoldLib) existingBoldLib.remove();
+      const boldLib = document.createElement("script");
+      boldLib.src = "https://checkout.bold.co/library/boldPaymentButton.js";
+      boldLib.async = true;
+      document.head.appendChild(boldLib);
+
       // Wait for Bold to render the button, then auto-open checkout
       const tryClick = () => {
         const btn = boldContainerRef.current?.querySelector("button, a, [role='button']");

@@ -132,7 +132,6 @@ export default function CheckoutPage() {
       boldScript.setAttribute("data-integrity-signature", result.signature);
       boldScript.setAttribute("data-description", result.description);
       boldScript.setAttribute("data-redirection-url", `${window.location.origin}/checkout/confirmacion?order=${result.orderId}`);
-      boldScript.setAttribute("data-tax", "vat-19");
 
       boldScript.setAttribute("data-customer-data", JSON.stringify({
         email: result.customerEmail || formData.customerEmail,
@@ -156,12 +155,19 @@ export default function CheckoutPage() {
       // and unmount the Bold container before Bold can render its button.
       // Cart will be cleared after Bold redirects to confirmation page.
 
-      // Reload Bold library so it picks up the newly inserted data-bold-button script
+      // Bold docs: "Si estás añadiendo el botón de pagos a un sitio web construido con React
+      // u otros frameworks similares debes asegurarte de inyectar en el head una vez el script
+      // del botón se encuentre en el DOM."
+      // Remove old Bold lib and re-inject so it picks up the new data-bold-button script
       const existingBoldLib = document.querySelector('script[src*="boldPaymentButton"]');
       if (existingBoldLib) existingBoldLib.remove();
       const boldLib = document.createElement("script");
       boldLib.src = "https://checkout.bold.co/library/boldPaymentButton.js";
       boldLib.async = true;
+      boldLib.onload = () => {
+        // Bold lib loaded — it should now render the button
+        setBoldReady(true);
+      };
       document.head.appendChild(boldLib);
 
       // Wait for Bold to render the button, then auto-open checkout

@@ -3,10 +3,10 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
-const BOLD_SECRET_KEY = process.env.BOLD_SECRET_KEY || "";
-const BOLD_API_KEY = process.env.NEXT_PUBLIC_BOLD_API_KEY || "";
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const BOLD_SECRET_KEY = (process.env.BOLD_SECRET_KEY || "").trim();
+const BOLD_API_KEY = (process.env.NEXT_PUBLIC_BOLD_API_KEY || "").trim();
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+const SUPABASE_SERVICE_KEY = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 
 function getAdminClient() {
   return createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {

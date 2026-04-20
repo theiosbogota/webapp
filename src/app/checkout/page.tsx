@@ -24,7 +24,6 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("bold");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [boldReady, setBoldReady] = useState(false);
   const [mounted, setMounted] = useState(false);
   const boldContainerRef = useRef<HTMLDivElement>(null);
 
@@ -36,20 +35,6 @@ export default function CheckoutPage() {
   const subtotal = getTotal();
   const shipping = subtotal >= 500000 ? 0 : 15000;
   const total = subtotal + shipping;
-
-  // Load Bold payment button script
-  useEffect(() => {
-    if (document.querySelector('script[src*="boldPaymentButton"]')) {
-      setBoldReady(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src = "https://checkout.bold.co/library/boldPaymentButton.js";
-    script.async = true;
-    script.onload = () => setBoldReady(true);
-    script.onerror = () => console.error("Failed to load Bold script");
-    document.head.appendChild(script);
-  }, []);
 
   // Get user (optional — guests can still checkout)
   useEffect(() => {
@@ -119,7 +104,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Render Bold payment button into container
+    // Render Bold payment button — Bold's custom element handles the redirect
     if (boldContainerRef.current) {
       boldContainerRef.current.innerHTML = "";
 
@@ -155,33 +140,25 @@ export default function CheckoutPage() {
       // and unmount the Bold container before Bold can render its button.
       // Cart will be cleared after Bold redirects to confirmation page.
 
-      // Bold docs: "Si estás añadiendo el botón de pagos a un sitio web construido con React
-      // u otros frameworks similares debes asegurarte de inyectar en el head una vez el script
-      // del botón se encuentre en el DOM."
-      // Remove old Bold lib and re-inject so it picks up the new data-bold-button script
+      // Bold docs: React frameworks must re-inject the Bold lib after the button script is in the DOM
       const existingBoldLib = document.querySelector('script[src*="boldPaymentButton"]');
       if (existingBoldLib) existingBoldLib.remove();
       const boldLib = document.createElement("script");
       boldLib.src = "https://checkout.bold.co/library/boldPaymentButton.js";
       boldLib.async = true;
-      boldLib.onload = () => {
-        // Bold lib loaded — it should now render the button
-        setBoldReady(true);
-      };
       document.head.appendChild(boldLib);
 
-      // Wait for Bold to render the button, then auto-open checkout
+      // Auto-click the Bold button once it renders to open the checkout immediately
       const tryClick = () => {
-        const btn = boldContainerRef.current?.querySelector("button, a, [role='button']");
-        if (btn) {
-          (btn as HTMLElement).click();
+        const boldEl = boldContainerRef.current?.querySelector("bold-payment-button") as HTMLElement | null;
+        if (boldEl) {
+          boldEl.click();
           setLoading(false);
         } else {
-          // Bold hasn't rendered yet, retry
           setTimeout(tryClick, 300);
         }
       };
-      setTimeout(tryClick, 500);
+      setTimeout(tryClick, 1000);
     }
   }
 
@@ -477,7 +454,7 @@ export default function CheckoutPage() {
                     type="button"
                     className="w-full bg-gold text-gold-foreground hover:bg-gold/90"
                     size="lg"
-                    disabled={loading || !boldReady}
+                    disabled={loading}
                     onClick={handleBoldPayment}
                   >
                     {loading ? (

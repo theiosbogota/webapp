@@ -150,15 +150,18 @@ export default function CheckoutPage() {
 
       // Auto-click the Bold button once it renders to open the checkout immediately
       const tryClick = () => {
-        const boldEl = boldContainerRef.current?.querySelector("bold-payment-button") as HTMLElement | null;
-        if (boldEl) {
-          boldEl.click();
-          setLoading(false);
-        } else {
-          setTimeout(tryClick, 300);
+        const boldEl = boldContainerRef.current?.querySelector("bold-payment-button") as HTMLElement & { shadowRoot?: ShadowRoot } | null;
+        if (boldEl?.shadowRoot) {
+          const innerBtn = boldEl.shadowRoot.querySelector("[id^='boldPaymentButton'], button, a") as HTMLElement | null;
+          if (innerBtn) {
+            innerBtn.click();
+            setLoading(false);
+            return;
+          }
         }
+        setTimeout(tryClick, 300);
       };
-      setTimeout(tryClick, 1000);
+      setTimeout(tryClick, 1500);
     }
   }
 

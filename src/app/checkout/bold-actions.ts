@@ -156,10 +156,9 @@ export async function createBoldOrder(data: {
   const orderItems = data.items.map((item) => ({
     order_id: order.id,
     product_id: item.id,
-    store_id: item.store_id || item.id,
     quantity: item.quantity,
     unit_price: item.price,
-    total: item.price * item.quantity,
+    subtotal: item.price * item.quantity,
   }));
 
   const { error: itemsError } = await admin
@@ -169,32 +168,6 @@ export async function createBoldOrder(data: {
   if (itemsError) {
     await admin.from("orders").delete().eq("id", order.id);
     return { error: "Error al crear los items del pedido: " + itemsError.message };
-  }
-
-  // Create payment record
-  const { error: paymentError } = await admin.from("payments").insert({
-    order_id: order.id,
-    method: data.paymentMethod || "bold",
-    status: "pendiente",
-    amount: total,
-  });
-
-  if (paymentError) {
-    console.error("Payment record error:", paymentError);
-  }
-
-  // Create shipment record
-  await admin.from("shipments").insert({
-    order_id: order.id,
-    status: "preparando",
-  });
-
-  // Update product stock
-  for (const item of data.items) {
-    await admin.rpc("decrement_stock", {
-      product_id: item.id,
-      qty: item.quantity,
-    });
   }
 
   // Generate Bold integrity signature

@@ -129,10 +129,9 @@ export async function createOrderAction(data: CheckoutData) {
   const orderItems = data.items.map((item) => ({
     order_id: order.id,
     product_id: item.id,
-    store_id: item.store_id || item.id,
     quantity: item.quantity,
     unit_price: item.price,
-    total: item.price * item.quantity,
+    subtotal: item.price * item.quantity,
   }));
 
   const { error: itemsError } = await admin
@@ -142,29 +141,6 @@ export async function createOrderAction(data: CheckoutData) {
   if (itemsError) {
     await admin.from("orders").delete().eq("id", order.id);
     return { error: "Error al crear los items del pedido: " + itemsError.message };
-  }
-
-  const { error: paymentError } = await admin.from("payments").insert({
-    order_id: order.id,
-    method: data.paymentMethod || "efectivo",
-    status: "pendiente",
-    amount: total,
-  });
-
-  if (paymentError) {
-    console.error("Payment record error:", paymentError);
-  }
-
-  await admin.from("shipments").insert({
-    order_id: order.id,
-    status: "preparando",
-  });
-
-  for (const item of data.items) {
-    await admin.rpc("decrement_stock", {
-      product_id: item.id,
-      qty: item.quantity,
-    });
   }
 
   return { success: true, orderId: order.id };

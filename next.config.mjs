@@ -2,6 +2,7 @@
 const nextConfig = {
   transpilePackages: ["lucide-react"],
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",

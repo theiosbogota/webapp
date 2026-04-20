@@ -123,7 +123,7 @@ export default function ProductDetailPage() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
             {/* Product image */}
             <div className="space-y-4">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-muted to-muted/50 border flex items-center justify-center overflow-hidden">
+              <div className="aspect-square rounded-2xl bg-white border flex items-center justify-center overflow-hidden">
                 {product.images?.[0] ? (
                   <Image
                     src={product.images[0]}

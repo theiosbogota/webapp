@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/client";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
@@ -32,19 +31,17 @@ interface CheckoutData {
 }
 
 async function ensureUser(email: string, name: string, phone: string): Promise<{ userId: string } | { error: string }> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (user) return { userId: user.id };
-
   if (!email) return { error: "Necesitamos tu email para procesar el pedido" };
 
   const admin = getAdminClient();
+
+  // Check if user already exists by email
   const { data: existingUsers } = await admin.auth.admin.listUsers();
-  const existing = existingUsers?.users?.find(u => u.email === email);
+  const existing = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
   if (existing) return { userId: existing.id };
 
+  // Create new user with random password
   const randomPass = crypto.randomBytes(16).toString("base64url");
   const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
     email,

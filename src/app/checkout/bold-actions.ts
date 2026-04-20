@@ -1,6 +1,5 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/client";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
@@ -35,27 +34,20 @@ export async function generateBoldSignature(
 }
 
 /**
- * Ensure user exists — if logged in, return their ID.
- * If guest, auto-create account with email + random password.
- * Supabase sends confirmation email automatically.
+ * Ensure user exists — find by email or auto-create.
+ * Uses admin client only (browser client doesn't work in server actions).
  */
 async function ensureUser(email: string, name: string, phone: string): Promise<{ userId: string; email: string } | { error: string }> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (user) return { userId: user.id, email: user.email || email };
-
   if (!email) return { error: "Necesitamos tu email para procesar el pedido" };
 
-  // Check if user already exists by email using admin
   const admin = getAdminClient();
+
+  // Check if user already exists by email
   const { data: existingUsers } = await admin.auth.admin.listUsers();
-  const existing = existingUsers?.users?.find(u => u.email === email);
+  const existing = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
   if (existing) {
-    // User exists but not logged in — return their ID
-    // They'll get a confirmation email to set their password
-    return { userId: existing.id, email };
+    return { userId: existing.id, email: existing.email || email };
   }
 
   // Create new user with random password

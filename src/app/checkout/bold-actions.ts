@@ -14,6 +14,12 @@ function getAdminClient() {
   });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUUID(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
 /**
  * Generate Bold integrity signature server-side
  * SHA256({orderId}{amount}{currency}{secretKey})
@@ -108,6 +114,12 @@ export async function createBoldOrder(data: {
     return { error: "Completa todos los datos de envío" };
   }
 
+  // Validate product IDs are real UUIDs (not mock data like "prod-1")
+  const invalidIds = data.items.filter(item => !isValidUUID(item.id));
+  if (invalidIds.length > 0) {
+    return { error: "Tu carrito tiene productos inválidos. Por favor vacía el carrito y agrega los productos nuevamente desde la tienda." };
+  }
+
   // Ensure user exists (auto-create for guests)
   const userResult = await ensureUser(
     data.customerEmail || "",
@@ -122,7 +134,28 @@ export async function createBoldOrder(data: {
 
   const admin = getAdminClient();
 
-  const subtotal = data.items.reduce(
+  // Verify products exist in DB and get real prices (don't trust client prices)
+  const productIds = data.items.map(item => item.id);
+  const { data: dbProducts, error: productErr } = await admin
+    .from("products")
+    .select("id, price, name, stock")
+    .in("id", productIds);
+
+  if (productErr || !dbProducts || dbProducts.length !== productIds.length) {
+    return { error: `Algunos productos ya no están disponibles. Por favor vacía el carrito y agrega los productos nuevamente.` };
+  }
+
+  // Build price map from DB
+  const priceMap = new Map(dbProducts.map(p => [p.id, p]));
+
+  // Use DB prices, not client-submitted prices
+  const verifiedItems = data.items.map(item => ({
+    ...item,
+    price: priceMap.get(item.id)?.price ?? item.price,
+    name: priceMap.get(item.id)?.name ?? item.name,
+  }));
+
+  const subtotal = verifiedItems.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
   );
@@ -152,8 +185,8 @@ export async function createBoldOrder(data: {
     return { error: "Error al crear el pedido: " + orderError.message };
   }
 
-  // Create order items
-  const orderItems = data.items.map((item) => ({
+  // Create order items with verified DB prices
+  const orderItems = verifiedItems.map((item) => ({
     order_id: order.id,
     product_id: item.id,
     quantity: item.quantity,

@@ -52,6 +52,7 @@ export default function CheckoutPage() {
       setUser(user);
     });
     trackInitCheckout(subtotal, "COP");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function getFormData() {

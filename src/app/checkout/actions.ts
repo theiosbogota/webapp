@@ -35,33 +35,47 @@ async function ensureUser(email: string, name: string, phone: string): Promise<{
 
   const admin = getAdminClient();
 
-  // Check if user already exists by email
+  // Check if user already exists by email in auth.users
   const { data: existingUsers } = await admin.auth.admin.listUsers();
   const existing = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
-  if (existing) return { userId: existing.id };
+  let userId: string;
 
-  // Create new user with random password
-  const randomPass = crypto.randomBytes(16).toString("base64url");
-  const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
-    email,
-    password: randomPass,
-    email_confirm: true,
-    user_metadata: { full_name: name, phone },
-  });
+  if (existing) {
+    userId = existing.id;
+  } else {
+    // Create new user with random password
+    const randomPass = crypto.randomBytes(16).toString("base64url");
+    const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password: randomPass,
+      email_confirm: true,
+      user_metadata: { full_name: name, phone },
+    });
 
-  if (createErr || !newUser.user) {
-    return { error: "Error creando tu cuenta: " + (createErr?.message || "intenta de nuevo") };
+    if (createErr || !newUser.user) {
+      return { error: "Error creando tu cuenta: " + (createErr?.message || "intenta de nuevo") };
+    }
+    userId = newUser.user.id;
   }
 
-  await admin.from("profiles").upsert({
-    id: newUser.user.id,
-    full_name: name,
-    phone,
-    email,
-  });
+  // Ensure profile exists (FK: orders.buyer_id -> profiles.id)
+  const { data: profile } = await admin.from("profiles").select("id").eq("id", userId).single();
 
-  return { userId: newUser.user.id };
+  if (!profile) {
+    const { error: profileErr } = await admin.from("profiles").insert({
+      id: userId,
+      full_name: name,
+      phone,
+      email,
+    });
+    if (profileErr) {
+      console.error("Profile creation error:", profileErr);
+      return { error: "Error creando tu perfil. Intenta de nuevo." };
+    }
+  }
+
+  return { userId };
 }
 
 export async function createOrderAction(data: CheckoutData) {

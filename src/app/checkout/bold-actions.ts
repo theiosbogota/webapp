@@ -34,44 +34,56 @@ export async function generateBoldSignature(
 }
 
 /**
- * Ensure user exists — find by email or auto-create.
- * Uses admin client only (browser client doesn't work in server actions).
+ * Ensure user exists in auth.users AND profiles table.
+ * FK constraint: orders.buyer_id -> profiles.id
+ * Must have a matching row in profiles before inserting order.
  */
 async function ensureUser(email: string, name: string, phone: string): Promise<{ userId: string; email: string } | { error: string }> {
   if (!email) return { error: "Necesitamos tu email para procesar el pedido" };
 
   const admin = getAdminClient();
 
-  // Check if user already exists by email
+  // Check if user already exists by email in auth.users
   const { data: existingUsers } = await admin.auth.admin.listUsers();
   const existing = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
+  let userId: string;
+
   if (existing) {
-    return { userId: existing.id, email: existing.email || email };
+    userId = existing.id;
+  } else {
+    // Create new user with random password
+    const randomPass = crypto.randomBytes(16).toString("base64url");
+    const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
+      email,
+      password: randomPass,
+      email_confirm: true,
+      user_metadata: { full_name: name, phone },
+    });
+
+    if (createErr || !newUser.user) {
+      return { error: "Error creando tu cuenta: " + (createErr?.message || "intenta de nuevo") };
+    }
+    userId = newUser.user.id;
   }
 
-  // Create new user with random password
-  const randomPass = crypto.randomBytes(16).toString("base64url");
-  const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
-    email,
-    password: randomPass,
-    email_confirm: true,
-    user_metadata: { full_name: name, phone },
-  });
+  // Ensure profile exists (FK: orders.buyer_id -> profiles.id)
+  const { data: profile } = await admin.from("profiles").select("id").eq("id", userId).single();
 
-  if (createErr || !newUser.user) {
-    return { error: "Error creando tu cuenta: " + (createErr?.message || "intenta de nuevo") };
+  if (!profile) {
+    const { error: profileErr } = await admin.from("profiles").insert({
+      id: userId,
+      full_name: name,
+      phone,
+      email,
+    });
+    if (profileErr) {
+      console.error("Profile creation error:", profileErr);
+      return { error: "Error creando tu perfil. Intenta de nuevo." };
+    }
   }
 
-  // Create profile
-  await admin.from("profiles").upsert({
-    id: newUser.user.id,
-    full_name: name,
-    phone,
-    email,
-  });
-
-  return { userId: newUser.user.id, email };
+  return { userId, email };
 }
 
 /**

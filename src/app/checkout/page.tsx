@@ -25,7 +25,20 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [boldReady, setBoldReady] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const boldContainerRef = useRef<HTMLDivElement>(null);
+
+  // Wait for zustand persist to rehydrate from localStorage
+  useEffect(() => {
+    const unsub = useCartStore.persist.onFinishHydration(() => {
+      setHydrated(true);
+    });
+    // Already hydrated?
+    if (useCartStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+    return unsub;
+  }, []);
 
   const subtotal = getTotal();
   const shipping = subtotal >= 500000 ? 0 : 15000;
@@ -194,6 +207,15 @@ export default function CheckoutPage() {
     trackPurchase(total, "COP");
     clearCart();
     router.push(`/checkout/confirmacion?order=${result.orderId}`);
+  }
+
+  // Don't show "empty cart" until we've hydrated from localStorage
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   if (items.length === 0) {

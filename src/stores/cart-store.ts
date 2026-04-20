@@ -73,15 +73,15 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "iosbogota-cart",
+      version: 1,
       partialize: (state) => ({ items: state.items }),
-      // Filter out stale mock product IDs (like "prod-1") when loading from localStorage
-      merge: (persisted, current) => {
-        const persistedState = persisted as { items?: CartItem[] };
-        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const validItems = (persistedState.items || []).filter(
-          (item) => UUID_RE.test(item.product.id)
-        );
-        return { ...current, ...persistedState, items: validItems };
+      // Migration: clear old cart data with mock IDs (like "prod-1") that fail UUID validation
+      migrate: (persisted, version) => {
+        if (version < 1) {
+          // Old version had mock product IDs — clear everything
+          return { items: [] };
+        }
+        return persisted as { items: CartItem[] };
       },
     }
   )

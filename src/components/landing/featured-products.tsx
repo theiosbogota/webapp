@@ -1,15 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/product-card";
-import { mockProducts } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
+import type { Product } from "@/types";
 
 export function FeaturedProducts() {
-  const featured = mockProducts.filter((p) => p.featured);
+  const [featured, setFeatured] = useState<Product[]>([]);
   const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("products")
+      .select("*, store:stores(*), category:categories(*)")
+      .eq("active", true)
+      .eq("featured", true)
+      .limit(4)
+      .then(({ data }) => {
+        if (data && data.length > 0) setFeatured(data as Product[]);
+      });
+  }, []);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Scroll-driven video

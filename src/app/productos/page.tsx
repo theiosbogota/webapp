@@ -16,7 +16,6 @@ import {
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ProductCard } from "@/components/products/product-card";
-import { mockProducts } from "@/lib/mock-data";
 import { CONDITION_LABELS, STORAGE_OPTIONS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { trackSearch } from "@/components/meta-pixel";
@@ -28,7 +27,7 @@ function ProductosContent() {
   const [sortBy, setSortBy] = useState("newest");
   const [selectedCondition, setSelectedCondition] = useState<string | null>(null);
   const [selectedStorage, setSelectedStorage] = useState<string | null>(null);
-  const [allProducts, setAllProducts] = useState<Product[]>(mockProducts);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [localSearch, setLocalSearch] = useState(searchQuery);
 
   useEffect(() => {

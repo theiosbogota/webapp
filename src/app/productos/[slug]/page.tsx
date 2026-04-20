@@ -25,7 +25,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useCartStore } from "@/stores/cart-store";
-import { mockProducts } from "@/lib/mock-data";
 import { formatPrice, CONDITION_LABELS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
 import { ProductReviews } from "@/components/products/product-reviews";
@@ -55,9 +54,6 @@ export default function ProductDetailPage() {
       if (data) {
         setProduct(data as Product);
         trackViewContent(data.name, data.id);
-      } else {
-        const mock = mockProducts.find((p) => p.slug === slug);
-        setProduct(mock || null);
       }
       setLoading(false);
     }

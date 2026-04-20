@@ -1,13 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { ArrowRight, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/products/product-card";
-import { mockProducts } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
+import type { Product } from "@/types";
 
 export function LatestProducts() {
-  const latest = mockProducts.slice(0, 4);
+  const [latest, setLatest] = useState<Product[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("products")
+      .select("*, store:stores(*), category:categories(*)")
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(4)
+      .then(({ data }) => {
+        if (data && data.length > 0) setLatest(data as Product[]);
+      });
+  }, []);
 
   return (
     <section className="py-16">

@@ -152,8 +152,9 @@ export default function CheckoutPage() {
 
       boldContainerRef.current.appendChild(boldScript);
 
-      trackPurchase(total, "COP");
-      clearCart();
+      // NOTE: Don't clearCart() here! The component would re-render with empty cart
+      // and unmount the Bold container before Bold can render its button.
+      // Cart will be cleared after Bold redirects to confirmation page.
 
       // Wait for Bold to render the button, then auto-open checkout
       const tryClick = () => {

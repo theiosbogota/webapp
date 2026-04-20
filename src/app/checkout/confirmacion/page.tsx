@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/client";
+import { useCartStore } from "@/stores/cart-store";
 import { formatPrice, SITE_NAME } from "@/lib/constants";
 
 interface OrderData {
@@ -28,8 +29,11 @@ function ConfirmacionContent() {
   const orderId = searchParams.get("order");
   const [order, setOrder] = useState<OrderData | null>(null);
   const purchaseFired = useRef(false);
+  const { clearCart } = useCartStore();
 
   useEffect(() => {
+    // Clear cart on confirmation page (user has already paid or completed order)
+    clearCart();
     if (!orderId) return;
     async function load() {
       const supabase = createClient();

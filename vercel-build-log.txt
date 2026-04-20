@@ -1,0 +1,11 @@
+﻿node.exe : Retrieving projectÔÇª
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Retrieving projectÔÇª:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Resolving deployment "dpl_3fCqxyNutu3aLKPBtwppr5XDXhwL"
+Streaming logs for deployment dpl_3fCqxyNutu3aLKPBtwppr5XDXhwL starting from 19:07:28.47
+
+waiting for new logs...

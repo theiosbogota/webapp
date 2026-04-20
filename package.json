@@ -6,8 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "pages:deploy": "npx wrangler pages deploy .next/static --project-name=iosbogota"
+    "lint": "next lint"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

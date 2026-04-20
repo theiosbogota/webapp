@@ -33,6 +33,11 @@ export async function generateBoldSignature(
     return { error: "Bold no está configurado. Faltan las llaves de integración." };
   }
 
+  // Debug: verify keys are clean (no \r\n)
+  console.log("[Bold] API key length:", BOLD_API_KEY.length, "has newline:", BOLD_API_KEY.includes("\n"));
+  console.log("[Bold] Secret key length:", BOLD_SECRET_KEY.length, "has newline:", BOLD_SECRET_KEY.includes("\n"));
+  console.log("[Bold] Signature input:", `${orderId}${amount}${currency}[SECRET]`);
+
   const concatenated = `${orderId}${amount}${currency}${BOLD_SECRET_KEY}`;
   const signature = crypto.createHash("sha256").update(concatenated).digest("hex");
 

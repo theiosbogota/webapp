@@ -20,6 +20,7 @@ import {
   BarChart3,
   Calendar,
   Phone,
+  ShoppingCart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ const navSections = [
       { href: "/admin/productos", label: "Productos", icon: ShoppingBag },
       { href: "/admin/repuestos", label: "Repuestos", icon: Wrench },
       { href: "/admin/pedidos", label: "Pedidos", icon: Package },
+      { href: "/admin/pos", label: "Ventas Local", icon: ShoppingCart },
     ],
   },
   {

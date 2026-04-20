@@ -125,12 +125,12 @@ export default function CheckoutPage() {
 
       const boldScript = document.createElement("script");
       boldScript.setAttribute("data-bold-button", "dark-L");
-      boldScript.setAttribute("data-api-key", result.apiKey);
-      boldScript.setAttribute("data-order-id", result.boldOrderId);
+      boldScript.setAttribute("data-api-key", result.apiKey.trim());
+      boldScript.setAttribute("data-order-id", result.boldOrderId.trim());
       boldScript.setAttribute("data-currency", "COP");
       boldScript.setAttribute("data-amount", result.amount.toString());
-      boldScript.setAttribute("data-integrity-signature", result.signature);
-      boldScript.setAttribute("data-description", result.description);
+      boldScript.setAttribute("data-integrity-signature", result.signature.trim());
+      boldScript.setAttribute("data-description", result.description.trim());
       boldScript.setAttribute("data-redirection-url", `${window.location.origin}/checkout/confirmacion?order=${result.orderId}`);
 
       boldScript.setAttribute("data-customer-data", JSON.stringify({

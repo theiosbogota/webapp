@@ -1,4 +1,15 @@
 import { createClient } from "@/lib/supabase/client";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import crypto from "crypto";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+function getAdminClient() {
+  return createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 interface CartItem {
   id: string;
@@ -17,19 +28,46 @@ interface CheckoutData {
   shippingNeighborhood: string;
   shippingNotes: string;
   paymentMethod: string;
+  customerEmail?: string;
+}
+
+async function ensureUser(email: string, name: string, phone: string): Promise<{ userId: string } | { error: string }> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) return { userId: user.id };
+
+  if (!email) return { error: "Necesitamos tu email para procesar el pedido" };
+
+  const admin = getAdminClient();
+  const { data: existingUsers } = await admin.auth.admin.listUsers();
+  const existing = existingUsers?.users?.find(u => u.email === email);
+
+  if (existing) return { userId: existing.id };
+
+  const randomPass = crypto.randomBytes(16).toString("base64url");
+  const { data: newUser, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password: randomPass,
+    email_confirm: true,
+    user_metadata: { full_name: name, phone },
+  });
+
+  if (createErr || !newUser.user) {
+    return { error: "Error creando tu cuenta: " + (createErr?.message || "intenta de nuevo") };
+  }
+
+  await admin.from("profiles").upsert({
+    id: newUser.user.id,
+    full_name: name,
+    phone,
+    email,
+  });
+
+  return { userId: newUser.user.id };
 }
 
 export async function createOrderAction(data: CheckoutData) {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "Debes iniciar sesión para realizar un pedido" };
-  }
-
   if (!data.items || data.items.length === 0) {
     return { error: "El carrito está vacío" };
   }
@@ -38,6 +76,16 @@ export async function createOrderAction(data: CheckoutData) {
     return { error: "Completa todos los datos de envío" };
   }
 
+  const userResult = await ensureUser(
+    data.customerEmail || "",
+    data.shippingName,
+    data.shippingPhone
+  );
+
+  if ("error" in userResult) return { error: userResult.error };
+
+  const admin = getAdminClient();
+
   const subtotal = data.items.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -45,11 +93,10 @@ export async function createOrderAction(data: CheckoutData) {
   const shippingCost = subtotal >= 500000 ? 0 : 15000;
   const total = subtotal + shippingCost;
 
-  // Create order
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await admin
     .from("orders")
     .insert({
-      buyer_id: user.id,
+      buyer_id: userResult.userId,
       status: "pendiente",
       subtotal,
       shipping_cost: shippingCost,
@@ -68,28 +115,25 @@ export async function createOrderAction(data: CheckoutData) {
     return { error: "Error al crear el pedido: " + orderError.message };
   }
 
-  // Create order items
   const orderItems = data.items.map((item) => ({
     order_id: order.id,
     product_id: item.id,
-    store_id: item.store_id || item.id, // fallback
+    store_id: item.store_id || item.id,
     quantity: item.quantity,
     unit_price: item.price,
     total: item.price * item.quantity,
   }));
 
-  const { error: itemsError } = await supabase
+  const { error: itemsError } = await admin
     .from("order_items")
     .insert(orderItems);
 
   if (itemsError) {
-    // Rollback order if items fail
-    await supabase.from("orders").delete().eq("id", order.id);
+    await admin.from("orders").delete().eq("id", order.id);
     return { error: "Error al crear los items del pedido: " + itemsError.message };
   }
 
-  // Create payment record
-  const { error: paymentError } = await supabase.from("payments").insert({
+  const { error: paymentError } = await admin.from("payments").insert({
     order_id: order.id,
     method: data.paymentMethod || "efectivo",
     status: "pendiente",
@@ -100,15 +144,13 @@ export async function createOrderAction(data: CheckoutData) {
     console.error("Payment record error:", paymentError);
   }
 
-  // Create shipment record
-  await supabase.from("shipments").insert({
+  await admin.from("shipments").insert({
     order_id: order.id,
     status: "preparando",
   });
 
-  // Update product stock
   for (const item of data.items) {
-    await supabase.rpc("decrement_stock", {
+    await admin.rpc("decrement_stock", {
       product_id: item.id,
       qty: item.quantity,
     });

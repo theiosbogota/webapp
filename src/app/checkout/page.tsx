@@ -45,7 +45,7 @@ export default function CheckoutPage() {
     document.head.appendChild(script);
   }, []);
 
-  // Get user
+  // Get user (optional — guests can still checkout)
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -54,22 +54,15 @@ export default function CheckoutPage() {
     trackInitCheckout(subtotal, "COP");
   }, []);
 
-  async function handleBoldPayment() {
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
+  function getFormData() {
     const nameInput = document.getElementById("name") as HTMLInputElement;
+    const emailInput = document.getElementById("email") as HTMLInputElement;
     const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const addressInput = document.getElementById("address") as HTMLInputElement;
     const neighborhoodInput = document.getElementById("neighborhood") as HTMLInputElement;
     const notesInput = document.getElementById("notes") as HTMLInputElement;
 
-    const checkoutData = {
+    return {
       items: items.map((item) => ({
         id: item.product.id,
         name: item.product.name,
@@ -83,18 +76,29 @@ export default function CheckoutPage() {
       shippingCity: "Bogotá",
       shippingNeighborhood: neighborhoodInput?.value || "",
       shippingNotes: notesInput?.value || "",
-      paymentMethod: "bold",
-      customerEmail: user.email || undefined,
+      customerEmail: emailInput?.value || user?.email || "",
     };
+  }
 
-    // Validate
-    if (!checkoutData.shippingName || !checkoutData.shippingPhone || !checkoutData.shippingAddress) {
+  async function handleBoldPayment() {
+    setLoading(true);
+    setError(null);
+
+    const formData = getFormData();
+
+    if (!formData.shippingName || !formData.shippingPhone || !formData.shippingAddress) {
       setError("Completa todos los datos de envío");
       setLoading(false);
       return;
     }
 
-    const result = await createBoldOrder(checkoutData);
+    if (!formData.customerEmail) {
+      setError("Necesitamos tu email para enviar la confirmación del pedido");
+      setLoading(false);
+      return;
+    }
+
+    const result = await createBoldOrder({ ...formData, paymentMethod: "bold" });
 
     if ("error" in result && result.error) {
       setError(result.error);
@@ -108,7 +112,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Render Bold payment button
+    // Render Bold payment button into container
     if (boldContainerRef.current) {
       boldContainerRef.current.innerHTML = "";
 
@@ -123,18 +127,17 @@ export default function CheckoutPage() {
       boldScript.setAttribute("data-redirection-url", `${window.location.origin}/checkout/confirmacion?order=${result.orderId}`);
       boldScript.setAttribute("data-tax", "vat-19");
 
-      // Pre-fill customer data
       boldScript.setAttribute("data-customer-data", JSON.stringify({
-        email: user.email || "",
-        fullName: checkoutData.shippingName,
-        phone: checkoutData.shippingPhone.replace(/\s/g, ""),
+        email: result.customerEmail || formData.customerEmail,
+        fullName: formData.shippingName,
+        phone: formData.shippingPhone.replace(/\s/g, ""),
         dialCode: "+57",
         documentNumber: "",
         documentType: "CC",
       }));
 
       boldScript.setAttribute("data-billing-address", JSON.stringify({
-        address: checkoutData.shippingAddress,
+        address: formData.shippingAddress,
         city: "Bogota",
         state: "Cundinamarca",
         country: "CO",
@@ -145,58 +148,41 @@ export default function CheckoutPage() {
       trackPurchase(total, "COP");
       clearCart();
 
-      // Bold script auto-renders the button, trigger a small delay then click it
-      setTimeout(() => {
+      // Wait for Bold to render the button, then auto-open checkout
+      const tryClick = () => {
         const btn = boldContainerRef.current?.querySelector("button, a, [role='button']");
         if (btn) {
           (btn as HTMLElement).click();
+          setLoading(false);
+        } else {
+          // Bold hasn't rendered yet, retry
+          setTimeout(tryClick, 300);
         }
-        setLoading(false);
-      }, 1500);
+      };
+      setTimeout(tryClick, 500);
     }
   }
 
   async function handleCashOnDelivery() {
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
-    const nameInput = document.getElementById("name") as HTMLInputElement;
-    const phoneInput = document.getElementById("phone") as HTMLInputElement;
-    const addressInput = document.getElementById("address") as HTMLInputElement;
-    const neighborhoodInput = document.getElementById("neighborhood") as HTMLInputElement;
-    const notesInput = document.getElementById("notes") as HTMLInputElement;
+    const formData = getFormData();
 
-    const checkoutData = {
-      items: items.map((item) => ({
-        id: item.product.id,
-        name: item.product.name,
-        price: item.product.price,
-        quantity: item.quantity,
-        store_id: item.product.store_id,
-      })),
-      shippingName: nameInput?.value || "",
-      shippingPhone: phoneInput?.value || "",
-      shippingAddress: addressInput?.value || "",
-      shippingCity: "Bogotá",
-      shippingNeighborhood: neighborhoodInput?.value || "",
-      shippingNotes: notesInput?.value || "",
-      paymentMethod: "efectivo",
-    };
-
-    if (!checkoutData.shippingName || !checkoutData.shippingPhone || !checkoutData.shippingAddress) {
+    if (!formData.shippingName || !formData.shippingPhone || !formData.shippingAddress) {
       setError("Completa todos los datos de envío");
       setLoading(false);
       return;
     }
 
-    // Use original createOrderAction for cash
+    if (!formData.customerEmail) {
+      setError("Necesitamos tu email para enviar la confirmación del pedido");
+      setLoading(false);
+      return;
+    }
+
     const { createOrderAction } = await import("./actions");
-    const result = await createOrderAction(checkoutData);
+    const result = await createOrderAction({ ...formData, paymentMethod: "efectivo" });
 
     if (result.error) {
       setError(result.error);
@@ -254,18 +240,6 @@ export default function CheckoutPage() {
           </Link>
         </Button>
 
-        {!user && (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg mb-6">
-            <p className="text-sm">
-              Debes{" "}
-              <Link href="/auth/login" className="font-medium underline">
-                iniciar sesión
-              </Link>{" "}
-              para completar tu compra.
-            </p>
-          </div>
-        )}
-
         {error && (
           <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6">
             <p className="text-sm">{error}</p>
@@ -275,6 +249,31 @@ export default function CheckoutPage() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Form */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Contact info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Datos de contacto</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    defaultValue={user?.email || ""}
+                    required
+                  />
+                  {!user && (
+                    <p className="text-xs text-muted-foreground">
+                      Crearemos una cuenta con tu email para que puedas hacer seguimiento de tu pedido
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Shipping info */}
             <Card>
               <CardHeader>
@@ -439,15 +438,15 @@ export default function CheckoutPage() {
                   <span>{formatPrice(total)}</span>
                 </div>
 
-                {/* Bold payment button container */}
-                <div ref={boldContainerRef} id="bold-button-container" />
+                {/* Bold payment button container — Bold renders its button here */}
+                <div ref={boldContainerRef} id="bold-button-container" className="min-h-0" />
 
                 {paymentMethod === "bold" ? (
                   <Button
                     type="button"
                     className="w-full bg-gold text-gold-foreground hover:bg-gold/90"
                     size="lg"
-                    disabled={loading || !user || !boldReady}
+                    disabled={loading || !boldReady}
                     onClick={handleBoldPayment}
                   >
                     {loading ? (
@@ -462,7 +461,7 @@ export default function CheckoutPage() {
                     type="button"
                     className="w-full"
                     size="lg"
-                    disabled={loading || !user}
+                    disabled={loading}
                     onClick={handleCashOnDelivery}
                   >
                     {loading ? (

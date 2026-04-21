@@ -21,6 +21,7 @@ import {
   Calendar,
   Phone,
   ShoppingCart,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ const navSections = [
       { href: "/admin/oportunidades", label: "Oportunidades", icon: Handshake },
       { href: "/admin/citas", label: "Citas", icon: Calendar },
       { href: "/admin/conversaciones", label: "Conversaciones", icon: MessageSquare },
+      { href: "/admin/bot", label: "WhatsApp Bot", icon: Bot },
     ],
   },
   {

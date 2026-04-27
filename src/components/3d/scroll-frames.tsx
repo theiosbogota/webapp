@@ -39,7 +39,10 @@ export function ScrollFrames({
     for (let i = 1; i <= frameCount; i++) {
       const img = new window.Image();
       const frameNum = String(i).padStart(4, "0");
-      img.src = `${framePath}${frameNum}.${extension}`;
+      // Append a version query param so browser cache invalidates when we
+      // re-encode the frames at a different quality / resolution. Bump
+      // FRAME_VERSION below whenever you re-upload.
+      img.src = `${framePath}${frameNum}.${extension}?v=hd2`;
 
       const tick = () => {
         loaded++;

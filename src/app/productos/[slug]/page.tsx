@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -32,10 +32,22 @@ import { useFavorites } from "@/hooks/use-favorites";
 import { trackViewContent, trackAddToCart, trackContact } from "@/components/meta-pixel";
 import type { Product } from "@/types";
 
+interface Variant {
+  id: string;
+  slug: string;
+  color: string;
+  storage: string;
+  price: number;
+  stock: number;
+  images: string[] | null;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const slug = params.slug as string;
   const [product, setProduct] = useState<Product | null>(null);
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const { addItem, openCart } = useCartStore();
@@ -54,6 +66,15 @@ export default function ProductDetailPage() {
       if (data) {
         setProduct(data as Product);
         trackViewContent(data.name, data.id);
+
+        // Load all sibling variants of the same model
+        const { data: sibs } = await supabase
+          .from("products")
+          .select("id, slug, color, storage, price, stock, images")
+          .eq("model", data.model)
+          .eq("active", true)
+          .order("price", { ascending: true });
+        setVariants((sibs as Variant[]) || []);
       }
       setLoading(false);
     }
@@ -211,6 +232,78 @@ export default function ProductDetailPage() {
               </div>
 
               <Separator />
+
+              {/* Variant pickers (only show when there's >1 option) */}
+              {(() => {
+                const storages = Array.from(new Set(variants.map(v => v.storage).filter(Boolean)));
+                const colors = Array.from(new Set(
+                  variants
+                    .filter(v => v.storage === product.storage)
+                    .map(v => v.color)
+                    .filter(Boolean)
+                ));
+                const showStorage = storages.length > 1;
+                const showColor = colors.length > 1;
+                if (!showStorage && !showColor) return null;
+                const goTo = (s: string) => {
+                  if (s !== product.slug) router.push(`/productos/${s}`);
+                };
+                return (
+                  <div className="space-y-4">
+                    {showStorage && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Almacenamiento</p>
+                        <div className="flex flex-wrap gap-2">
+                          {storages.map(st => {
+                            const variantInStorage = variants.find(v => v.storage === st && v.color === product.color)
+                              || variants.find(v => v.storage === st);
+                            const active = st === product.storage;
+                            return (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => variantInStorage && goTo(variantInStorage.slug)}
+                                className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                                  active
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border hover:border-primary/50"
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {showColor && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Color</p>
+                        <div className="flex flex-wrap gap-2">
+                          {colors.map(c => {
+                            const variant = variants.find(v => v.color === c && v.storage === product.storage);
+                            const active = c === product.color;
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => variant && goTo(variant.slug)}
+                                className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                                  active
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border hover:border-primary/50"
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Specs */}
               <div className="grid grid-cols-2 gap-4">

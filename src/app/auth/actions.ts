@@ -5,12 +5,13 @@ export async function loginAction(formData: FormData) {
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectParam = (formData.get("redirect") as string) || "";
 
   if (!email || !password) {
     return { error: "Email y contraseña son requeridos" };
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: authData, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -19,7 +20,25 @@ export async function loginAction(formData: FormData) {
     return { error: error.message };
   }
 
-  window.location.href = "/";
+  // If a specific redirect was requested (e.g. middleware sent us to /auth/login
+  // because they tried to access a protected page), honor it.
+  if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
+    window.location.href = redirectParam;
+    return {};
+  }
+
+  // Otherwise route by role: admins → /admin, everyone else → /dashboard
+  let target = "/dashboard";
+  if (authData.user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authData.user.id)
+      .single();
+    if (profile?.role === "admin") target = "/admin";
+  }
+
+  window.location.href = target;
   return {};
 }
 

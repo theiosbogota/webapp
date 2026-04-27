@@ -35,7 +35,7 @@ export default function ReportesPage() {
       try {
         const [ordersRes, productsRes, sparePartsRes, transactionsRes, dealsRes, contactsRes, appointmentsRes] = await Promise.all([
           supabase.from("orders").select("id, total, status, created_at"),
-          supabase.from("products").select("title, price, stock"),
+          supabase.from("products").select("name, price, stock"),
           supabase.from("spare_parts").select("nombre, price, cost, stock, stock_minimo").eq("active", true),
           supabase.from("transactions").select("type, amount, category, created_at"),
           supabase.from("deals").select("estado, monto_estimado"),
@@ -78,7 +78,7 @@ export default function ReportesPage() {
         const topProducts = (productsRes.data || [])
           .sort((a, b) => (b.price || 0) - (a.price || 0))
           .slice(0, 5)
-          .map((p) => ({ title: p.title, revenue: p.price || 0, count: p.stock || 0 }));
+          .map((p) => ({ title: p.name, revenue: p.price || 0, count: p.stock || 0 }));
 
         const topSpareParts = (sparePartsRes.data || [])
           .sort((a, b) => (b.price - b.cost) - (a.price - a.cost))

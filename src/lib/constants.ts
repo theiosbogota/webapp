@@ -1,7 +1,9 @@
 export const SITE_NAME = "IOSBogotá";
 export const SITE_DESCRIPTION =
   "El marketplace #1 de iPhones nuevos y usados en Bogotá. Compra y vende con confianza.";
-export const SITE_URL = "https://iosbogota.co";
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://theiosbogota.com"
+).trim().replace(/\/$/, "");
 
 export const IPHONE_MODELS = [
   "iPhone 16 Pro Max",

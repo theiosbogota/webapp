@@ -17,6 +17,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
+  const redirect = searchParams.get("redirect") || "";
 
   async function handleSubmit(formData: FormData) {
     setLoading(true);
@@ -57,6 +58,7 @@ function LoginForm() {
           </CardHeader>
           <CardContent>
             <form action={handleSubmit} className="space-y-4">
+              <input type="hidden" name="redirect" value={redirect} />
               {(error || authError) && (
                 <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
                   {error || "Error de autenticación. Intenta de nuevo."}

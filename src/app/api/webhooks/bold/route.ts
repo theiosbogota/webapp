@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
 import { mapBoldStatus } from "@/lib/bold";
 
-const PIXEL_ID = "1186091610159088";
+const PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID || "1186091610159088";
 const CAPI_ACCESS_TOKEN = process.env.META_CAPI_ACCESS_TOKEN;
 const API_VERSION = "v21.0";
+// Bold uses the same "llave secreta" for both the integrity hash and webhook
+// signature verification. Allow an explicit override via BOLD_WEBHOOK_SECRET,
+// otherwise fall back to the integrity key already configured for checkout.
+const BOLD_WEBHOOK_SECRET =
+  process.env.BOLD_WEBHOOK_SECRET || process.env.BOLD_SECRET_KEY || "";
 
-async function fireCapiPurchase(orderId: string, total: number, productIds: string[]) {
+async function fireCapiPurchase(
+  orderId: string,
+  total: number,
+  productIds: string[]
+) {
   if (!CAPI_ACCESS_TOKEN) return;
   try {
     await fetch(
@@ -40,27 +50,92 @@ async function fireCapiPurchase(orderId: string, total: number, productIds: stri
   }
 }
 
+// Strict signature checking is opt-in via BOLD_WEBHOOK_REQUIRE_SIGNATURE=true.
+// Default is permissive (matches the legacy behavior) so the deploy can't break
+// existing payments. Once you confirm the algorithm and secret match Bold's
+// side, flip the flag to enforce 401 on bad signatures.
+const REQUIRE_BOLD_SIGNATURE =
+  process.env.BOLD_WEBHOOK_REQUIRE_SIGNATURE === "true";
+
+function verifyBoldSignature(rawBody: string, signature: string | null): boolean {
+  if (!REQUIRE_BOLD_SIGNATURE) {
+    // Audit-only mode: compute and compare so we can see in logs whether the
+    // signature would have matched, but never block.
+    if (BOLD_WEBHOOK_SECRET && signature) {
+      try {
+        const expected = crypto
+          .createHmac("sha256", BOLD_WEBHOOK_SECRET)
+          .update(rawBody)
+          .digest("hex");
+        const provided = signature.replace(/^sha256=/, "").trim();
+        const matches =
+          expected.length === provided.length &&
+          crypto.timingSafeEqual(
+            Buffer.from(expected, "hex"),
+            Buffer.from(provided, "hex")
+          );
+        console.log(
+          `[Bold Webhook] signature audit: ${matches ? "match" : "MISMATCH"}`
+        );
+      } catch {
+        // ignore parse errors during audit
+      }
+    }
+    return true;
+  }
+
+  // Strict mode below
+  if (!BOLD_WEBHOOK_SECRET) {
+    console.error("[Bold Webhook] strict mode but BOLD_WEBHOOK_SECRET missing");
+    return false;
+  }
+  if (!signature) return false;
+
+  const expected = crypto
+    .createHmac("sha256", BOLD_WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest("hex");
+
+  const provided = signature.replace(/^sha256=/, "").trim();
+  if (expected.length !== provided.length) return false;
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(expected, "hex"),
+      Buffer.from(provided, "hex")
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   try {
+    const rawBody = await request.text();
+    const signature =
+      request.headers.get("x-bold-signature") ||
+      request.headers.get("bold-signature");
+
+    if (!verifyBoldSignature(rawBody, signature)) {
+      console.error("[Bold Webhook] Invalid signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const body = await request.json();
-
-    // Bold webhook payload structure
-    // { event_type: "...", data: { ... } }
+    const body = JSON.parse(rawBody);
     const data = body.data;
 
     if (!data) {
       return NextResponse.json({ received: true });
     }
 
-    // Bold sends different event types
-    // We care about payment status updates
     const boldStatus = data.payment_status || data.status;
     const boldOrderId = data.order_id || data.reference;
+    const transactionId = data.transaction_id || data.id || null;
 
     if (!boldOrderId || !boldStatus) {
       return NextResponse.json({ received: true });
@@ -68,89 +143,67 @@ export async function POST(request: Request) {
 
     const mapped = mapBoldStatus(boldStatus);
 
-    // Find order by Bold order ID stored in metadata
+    // Find order: first by metadata, then by stripped reference
     const { data: orders } = await supabaseAdmin
       .from("orders")
       .select("id, total, metadata")
       .eq("metadata->bold_order_id", boldOrderId);
 
-    const order = orders?.[0];
-    if (!order) {
-      // Also try by direct order ID reference
-      const orderId = boldOrderId.replace(/^ORD-/, "").replace(/-\d+$/, "");
+    let orderId: string | null = orders?.[0]?.id ?? null;
+
+    if (!orderId) {
+      const stripped = boldOrderId.replace(/^ORD-/, "").replace(/-\d+$/, "");
       const { data: directOrder } = await supabaseAdmin
         .from("orders")
-        .select("id, total")
-        .eq("id", orderId)
+        .select("id")
+        .eq("id", stripped)
         .single();
-
-      if (!directOrder) {
-        console.error("[Bold Webhook] Order not found:", boldOrderId);
-        return NextResponse.json({ received: true });
-      }
-
-      // Update payment
-      await supabaseAdmin
-        .from("payments")
-        .update({
-          status: mapped.payment,
-          gateway_id: data.transaction_id || data.id,
-          gateway_response: data,
-        })
-        .eq("order_id", directOrder.id);
-
-      // Update order
-      await supabaseAdmin
-        .from("orders")
-        .update({ status: mapped.order })
-        .eq("id", directOrder.id);
-
-      // Fire CAPI on approval
-      if (boldStatus === "APPROVED") {
-        const { data: orderData } = await supabaseAdmin
-          .from("orders")
-          .select("total, items:order_items(product_id)")
-          .eq("id", directOrder.id)
-          .single();
-        if (orderData) {
-          const productIds = (orderData.items || []).map(
-            (i: { product_id: string }) => i.product_id
-          );
-          await fireCapiPurchase(directOrder.id, orderData.total, productIds);
-        }
-      }
-
-      return NextResponse.json({ received: true, status: mapped });
+      orderId = directOrder?.id ?? null;
     }
 
-    // Update payment
+    if (!orderId) {
+      console.error("[Bold Webhook] Order not found:", boldOrderId);
+      return NextResponse.json({ received: true });
+    }
+
+    // Idempotency: if we already saw this gateway transaction id, skip side effects
+    if (transactionId) {
+      const { data: existing } = await supabaseAdmin
+        .from("payments")
+        .select("id, gateway_id, status")
+        .eq("order_id", orderId)
+        .single();
+
+      if (existing?.gateway_id === transactionId && existing?.status === mapped.payment) {
+        return NextResponse.json({ received: true, idempotent: true });
+      }
+    }
+
     await supabaseAdmin
       .from("payments")
       .update({
         status: mapped.payment,
-        gateway_id: data.transaction_id || data.id,
+        gateway_id: transactionId,
         gateway_response: data,
       })
-      .eq("order_id", order.id);
+      .eq("order_id", orderId);
 
-    // Update order
     await supabaseAdmin
       .from("orders")
       .update({ status: mapped.order })
-      .eq("id", order.id);
+      .eq("id", orderId);
 
-    // Fire CAPI on approval
     if (boldStatus === "APPROVED") {
       const { data: orderData } = await supabaseAdmin
         .from("orders")
         .select("total, items:order_items(product_id)")
-        .eq("id", order.id)
+        .eq("id", orderId)
         .single();
       if (orderData) {
         const productIds = (orderData.items || []).map(
           (i: { product_id: string }) => i.product_id
         );
-        await fireCapiPurchase(order.id, orderData.total, productIds);
+        await fireCapiPurchase(orderId, orderData.total, productIds);
       }
     }
 

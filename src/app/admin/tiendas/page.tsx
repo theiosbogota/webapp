@@ -21,8 +21,8 @@ interface StoreRow {
   slug: string;
   verified: boolean;
   active: boolean;
-  total_sales: number;
-  rating: number;
+  total_sales: number | null;
+  rating: number | null;
   created_at: string;
   owner: { full_name: string; email: string } | null;
 }
@@ -101,8 +101,8 @@ export default function AdminTiendasPage() {
                         <p className="text-xs text-muted-foreground">{store.owner?.email}</p>
                       </div>
                     </TableCell>
-                    <TableCell>{store.rating.toFixed(1)}</TableCell>
-                    <TableCell>{store.total_sales}</TableCell>
+                    <TableCell>{(store.rating ?? 0).toFixed(1)}</TableCell>
+                    <TableCell>{store.total_sales ?? 0}</TableCell>
                     <TableCell>
                       <Button
                         variant="ghost"

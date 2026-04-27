@@ -15,7 +15,7 @@ interface AdminStats {
   totalRevenue: number; pendingOrders: number; spareParts: number;
   lowStockParts: number; deals: number;
   dealsByStatus: Record<string, number>;
-  topProducts: { id: string; title: string; price: number; stock: number }[];
+  topProducts: { id: string; name: string; price: number; stock: number }[];
   recentOrders: { id: string; total: number; status: string; created_at: string }[];
 }
 
@@ -45,7 +45,7 @@ export default function AdminDashboard() {
       const [usersRes, storesRes, productsRes, ordersRes, sparePartsRes, dealsRes, lowStockRes] = await Promise.all([
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("stores").select("*", { count: "exact", head: true }),
-        supabase.from("products").select("id, title, price, stock").order("price", { ascending: false }).limit(5),
+        supabase.from("products").select("id, name, price, stock").order("price", { ascending: false }).limit(5),
         supabase.from("orders").select("id, total, status, created_at"),
         supabase.from("spare_parts").select("*", { count: "exact", head: true }),
         supabase.from("deals").select("estado"),
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
       const dealsByStatus: Record<string, number> = {};
       deals.forEach((d) => { dealsByStatus[d.estado] = (dealsByStatus[d.estado] || 0) + 1; });
       const lowStockParts = (lowStockRes.data || []).filter((sp) => sp.stock <= (sp.stock_minimo || 2)).length;
-      const topProducts = (productsRes.data || []).map((p) => ({ id: p.id, title: p.title, price: p.price, stock: p.stock }));
+      const topProducts = (productsRes.data || []).map((p) => ({ id: p.id, name: p.name, price: p.price, stock: p.stock }));
       const recentOrders = orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
 
       setStats({
@@ -200,7 +200,7 @@ export default function AdminDashboard() {
                   {i + 1}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#FAFAFA] truncate group-hover:text-[#D4A843] transition-colors">{p.title}</p>
+                  <p className="text-sm font-medium text-[#FAFAFA] truncate group-hover:text-[#D4A843] transition-colors">{p.name}</p>
                   <p className="text-xs text-[#555555]">Stock: {p.stock}</p>
                 </div>
                 <span className="text-sm font-semibold text-[#D4A843]">{formatCOP(p.price)}</span>

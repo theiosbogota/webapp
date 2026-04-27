@@ -5,10 +5,21 @@ import { useEffect, useRef, useState, useCallback } from "react";
 interface ScrollFramesProps {
   frameCount: number;
   framePath: string;
+  /** File extension served from storage. Defaults to webp (smallest). */
+  extension?: "webp" | "jpg" | "png";
+  /** Frames needed before the canvas first renders. Remaining frames keep
+   * loading in the background. Default: 1/3 of total. */
+  initialBatch?: number;
   className?: string;
 }
 
-export function ScrollFrames({ frameCount, framePath, className }: ScrollFramesProps) {
+export function ScrollFrames({
+  frameCount,
+  framePath,
+  extension = "webp",
+  initialBatch,
+  className,
+}: ScrollFramesProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,35 +28,38 @@ export function ScrollFrames({ frameCount, framePath, className }: ScrollFramesP
   const targetFrameRef = useRef(0);
   const rafRef = useRef<number>();
 
-  // Preload all frames into memory
+  // Preload frames. Show the canvas as soon as `initialBatch` frames are
+  // ready (default ~1/3 of total) and let the rest stream in.
   useEffect(() => {
     const images: HTMLImageElement[] = [];
+    const target = initialBatch ?? Math.max(30, Math.ceil(frameCount / 3));
     let loaded = 0;
+    let revealed = false;
 
     for (let i = 1; i <= frameCount; i++) {
       const img = new window.Image();
       const frameNum = String(i).padStart(4, "0");
-      img.src = `${framePath}${frameNum}.jpg`;
-      
-      img.onload = () => {
+      img.src = `${framePath}${frameNum}.${extension}`;
+
+      const tick = () => {
         loaded++;
         setLoadProgress(Math.round((loaded / frameCount) * 100));
+        if (!revealed && loaded >= target) {
+          revealed = true;
+          imagesRef.current = images;
+          setLoading(false);
+        }
         if (loaded === frameCount) {
           imagesRef.current = images;
           setLoading(false);
         }
       };
-      img.onerror = () => {
-        loaded++;
-        if (loaded === frameCount) {
-          imagesRef.current = images;
-          setLoading(false);
-        }
-      };
-      
+      img.onload = tick;
+      img.onerror = tick;
+
       images.push(img);
     }
-  }, [frameCount, framePath]);
+  }, [frameCount, framePath, extension, initialBatch]);
 
   // Smooth animation loop with lerp
   const animate = useCallback(() => {

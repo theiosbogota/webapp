@@ -101,8 +101,8 @@ export default function PrivacidadPage() {
               <p>
                 Para ejercer tus derechos o realizar consultas sobre el tratamiento de tus datos
                 personales, escríbenos a:{" "}
-                <a href="mailto:privacidad@iosbogota.co" className="text-gold hover:underline">
-                  privacidad@iosbogota.co
+                <a href="mailto:privacidad@theiosbogota.com" className="text-gold hover:underline">
+                  privacidad@theiosbogota.com
                 </a>
               </p>
             </section>

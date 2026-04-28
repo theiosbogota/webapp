@@ -42,6 +42,47 @@ interface Variant {
   images: string[] | null;
 }
 
+// Map a color name (Apple Spanish) to a CSS background for the swatch button.
+// Returns a gradient for two-tone finishes (titanium, deep blue, etc).
+function colorToCss(name: string): string {
+  const map: Record<string, string> = {
+    // iPhone 17 Pro real colors (aluminum)
+    "Cosmic Orange": "linear-gradient(135deg, #f0865e 0%, #c66437 100%)",
+    "Deep Blue": "linear-gradient(135deg, #2c4365 0%, #1a2942 100%)",
+    "Plateado": "linear-gradient(135deg, #e8e8ec 0%, #b8b8bc 100%)",
+    // iPhone 17 / 17 Plus
+    Medianoche: "linear-gradient(135deg, #292d36 0%, #1a1d24 100%)",
+    Estrella: "linear-gradient(135deg, #f5efe6 0%, #d6cfc1 100%)",
+    Salvia: "linear-gradient(135deg, #b8c9b5 0%, #93a890 100%)",
+    Lavanda: "linear-gradient(135deg, #d2c2e0 0%, #ad9bbd 100%)",
+    // iPhone 16
+    Ultramar: "linear-gradient(135deg, #4a5e89 0%, #2c3e6a 100%)",
+    "Verde Azulado": "linear-gradient(135deg, #5a8a83 0%, #2d5953 100%)",
+    Rosa: "linear-gradient(135deg, #f5cdd3 0%, #d8a6af 100%)",
+    Blanco: "linear-gradient(135deg, #f5f5f5 0%, #d8d8d8 100%)",
+    Negro: "linear-gradient(135deg, #2a2a2a 0%, #0e0e0e 100%)",
+    // iPhone 16 Pro / earlier titanium
+    "Titanio Negro": "linear-gradient(135deg, #4a4a4a 0%, #1f1f1f 100%)",
+    "Titanio Natural": "linear-gradient(135deg, #b8a78f 0%, #8c7e69 100%)",
+    "Titanio Blanco": "linear-gradient(135deg, #ddd9d3 0%, #b3afa6 100%)",
+    "Titanio Desierto": "linear-gradient(135deg, #b9a288 0%, #8c7558 100%)",
+    "Titanio Azul": "linear-gradient(135deg, #4a5868 0%, #2a3848 100%)",
+    // iPhone 15
+    Azul: "linear-gradient(135deg, #c9dfe4 0%, #95b3bc 100%)",
+    Verde: "linear-gradient(135deg, #cad6c8 0%, #95a791 100%)",
+    Amarillo: "linear-gradient(135deg, #f3e7b2 0%, #c4b67c 100%)",
+    // iPhone 14 / 13
+    Morado: "linear-gradient(135deg, #d2bbe1 0%, #9c83b3 100%)",
+    "Morado Profundo": "linear-gradient(135deg, #645a78 0%, #423a51 100%)",
+    "Negro Espacial": "linear-gradient(135deg, #4a4a4a 0%, #1f1f1f 100%)",
+    Plata: "linear-gradient(135deg, #e8e8ec 0%, #b8b8bc 100%)",
+    Oro: "linear-gradient(135deg, #f0d8b3 0%, #c5a770 100%)",
+    "Sierra Blue": "linear-gradient(135deg, #6b88b0 0%, #4a6b91 100%)",
+    Grafito: "linear-gradient(135deg, #4a4a4a 0%, #2a2a2a 100%)",
+  };
+  return map[name] || "linear-gradient(135deg, #888 0%, #555 100%)";
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -278,8 +319,10 @@ export default function ProductDetailPage() {
                     )}
                     {showColor && (
                       <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">Color</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p className="text-sm text-muted-foreground">
+                          Color: <span className="text-foreground font-medium">{product.color}</span>
+                        </p>
+                        <div className="flex flex-wrap gap-3">
                           {colors.map(c => {
                             const variant = variants.find(v => v.color === c && v.storage === product.storage);
                             const active = c === product.color;
@@ -287,15 +330,16 @@ export default function ProductDetailPage() {
                               <button
                                 key={c}
                                 type="button"
+                                aria-label={c}
+                                title={c}
                                 onClick={() => variant && goTo(variant.slug)}
-                                className={`px-4 py-2 rounded-lg border text-sm font-medium transition ${
+                                className={`relative w-10 h-10 rounded-full border-2 transition shadow-sm ${
                                   active
-                                    ? "border-primary bg-primary/10 text-primary"
-                                    : "border-border hover:border-primary/50"
+                                    ? "border-primary ring-2 ring-primary/30 ring-offset-2 ring-offset-background"
+                                    : "border-border hover:border-primary/60"
                                 }`}
-                              >
-                                {c}
-                              </button>
+                                style={{ background: colorToCss(c) }}
+                              />
                             );
                           })}
                         </div>
@@ -401,7 +445,7 @@ export default function ProductDetailPage() {
                   >
                     <a
                       href={`https://wa.me/57?text=${encodeURIComponent(
-                        `Hola, me interesa el ${product.name} que vi en IOSBogotá. ¿Está disponible?`
+                        `Hola, me interesa el ${product.name} que vi en TheIOSBogotá. ¿Está disponible?`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"

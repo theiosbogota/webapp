@@ -1,4 +1,4 @@
-export const SITE_NAME = "IOSBogotá";
+export const SITE_NAME = "TheIOSBogotá";
 export const SITE_DESCRIPTION =
   "El marketplace #1 de iPhones nuevos y usados en Bogotá. Compra y vende con confianza.";
 export const SITE_URL = (

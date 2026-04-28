@@ -84,7 +84,7 @@ export default function TerminosPage() {
               <h2 className="text-xl font-semibold text-foreground">8. Contacto</h2>
               <p>
                 Para cualquier consulta sobre estos términos, puedes contactarnos a través de
-                nuestro correo electrónico: soporte@iosbogota.co
+                nuestro correo electrónico: soporte@theiosbogota.com
               </p>
             </section>
 

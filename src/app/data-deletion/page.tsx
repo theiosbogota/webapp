@@ -76,8 +76,8 @@ export default function DataDeletionPage() {
                 </li>
                 <li>
                   <strong>Por correo electrónico:</strong> Envía un correo a{" "}
-                  <a href="mailto:privacidad@iosbogota.co" className="text-gold hover:underline">
-                    privacidad@iosbogota.co
+                  <a href="mailto:privacidad@theiosbogota.com" className="text-gold hover:underline">
+                    privacidad@theiosbogota.com
                   </a>{" "}
                   con el asunto &quot;Solicitud de eliminación de datos&quot; e incluye tu nombre,
                   email registrado y número de teléfono asociado a tu cuenta.
@@ -137,8 +137,8 @@ export default function DataDeletionPage() {
               <ul className="list-none space-y-1">
                 <li>
                   📧 Email:{" "}
-                  <a href="mailto:privacidad@iosbogota.co" className="text-gold hover:underline">
-                    privacidad@iosbogota.co
+                  <a href="mailto:privacidad@theiosbogota.com" className="text-gold hover:underline">
+                    privacidad@theiosbogota.com
                   </a>
                 </li>
                 <li>📱 WhatsApp: +57 320 370 4506</li>

@@ -98,7 +98,7 @@ export default function AdminDashboard() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-[#FAFAFA]">Dashboard</h1>
-            <p className="text-sm text-[#888888]">Resumen general de IOSBogotá</p>
+            <p className="text-sm text-[#888888]">Resumen general de TheIOSBogotá</p>
           </div>
         </div>
       </motion.div>

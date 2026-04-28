@@ -92,7 +92,7 @@ export function CTASection() {
                 ¿Quieres <span className="text-gold">vender</span>?
               </h3>
               <p className="text-muted-foreground max-w-sm">
-                Abre tu tienda en IOSBogotá y llega a miles de compradores.
+                Abre tu tienda en TheIOSBogotá y llega a miles de compradores.
                 Comisiones competitivas.
               </p>
               <Button size="lg" className="mt-4 bg-foreground text-background hover:bg-foreground/90" asChild>

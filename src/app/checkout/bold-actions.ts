@@ -224,7 +224,7 @@ export async function createBoldOrder(data: {
     signature: signatureResult.signature,
     apiKey: signatureResult.apiKey,
     amount: total,
-    description: `Pedido IOSBogota #${order.id}`,
+    description: `Pedido TheIOSBogotá #${order.id}`,
     customerEmail: userEmail,
   };
 }

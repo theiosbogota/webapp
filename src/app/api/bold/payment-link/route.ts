@@ -90,7 +90,7 @@ export async function POST(request: Request) {
       "data-currency": "COP",
       "data-amount": amount.toString(),
       "data-integrity-signature": signature,
-      "data-description": description || `Pedido IOSBogota`,
+      "data-description": description || `Pedido TheIOSBogotá`,
       "data-redirection-url": `${(process.env.NEXT_PUBLIC_SITE_URL || "https://theiosbogota.com").trim()}/checkout/confirmacion?order=${orderId}`,
     });
 

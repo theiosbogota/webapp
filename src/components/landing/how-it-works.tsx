@@ -76,7 +76,7 @@ export function HowItWorks() {
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-bold">¿Cómo <span className="text-gold">funciona</span>?</h2>
           <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-            Comprar tu iPhone en IOSBogotá es fácil, rápido y seguro
+            Comprar tu iPhone en TheIOSBogotá es fácil, rápido y seguro
           </p>
         </div>
 

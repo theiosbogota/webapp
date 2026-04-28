@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Vender iPhone",
-  description: "Vende tu iPhone en IOSBogotá. Publica gratis, llega a miles de compradores en Bogotá y recibe pagos seguros.",
+  description: "Vende tu iPhone en TheIOSBogotá. Publica gratis, llega a miles de compradores en Bogotá y recibe pagos seguros.",
 };
 import {
   ArrowRight,
@@ -61,7 +61,7 @@ export default function VenderPage() {
         <section className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground py-20">
           <div className="container mx-auto px-4 text-center max-w-3xl">
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Vende tus iPhones en IOSBogotá
+              Vende tus iPhones en TheIOSBogotá
             </h1>
             <p className="text-lg text-primary-foreground/80 mb-8">
               Abre tu tienda en el marketplace #1 de iPhones en Bogotá. Llega a

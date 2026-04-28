@@ -140,14 +140,14 @@ export default function ProductDetailPage() {
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
             {/* Product image */}
             <div className="space-y-4">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-muted to-muted/50 border flex items-center justify-center overflow-hidden">
+              <div className="relative aspect-square rounded-2xl bg-gradient-to-br from-muted to-muted/50 border flex items-center justify-center overflow-hidden">
                 {product.images?.[0] ? (
                   <Image
                     src={product.images[0]}
                     alt={product.name}
-                    width={600}
-                    height={600}
-                    className="object-contain p-8"
+                    fill
+                    sizes="(max-width: 1024px) 90vw, 600px"
+                    className="object-contain p-2"
                     priority
                   />
                 ) : (

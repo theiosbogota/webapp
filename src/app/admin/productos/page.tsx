@@ -6,8 +6,8 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye, Smartphone, Save, RotateCcw, Check, Search,
-  TrendingUp, ChevronDown, ChevronRight, Palette, Filter,
-  Package, CircleDot, Plus, Pencil, Trash2, AlertTriangle, DollarSign, Wallet,
+  TrendingUp, ChevronDown, ChevronRight,
+  Package, Plus, Pencil, Trash2, AlertTriangle, DollarSign, Wallet,
   Copy, BarChart3, X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -201,7 +201,7 @@ function AdminProductosPage() {
   // Bulk selection
   function toggleSelected(id: string) {
     const n = new Set(selected);
-    n.has(id) ? n.delete(id) : n.add(id);
+    if (n.has(id)) n.delete(id); else n.add(id);
     setSelected(n);
   }
 
@@ -322,7 +322,7 @@ function AdminProductosPage() {
   /* ── Expand/collapse ── */
   function toggle(model: string) {
     const n = new Set(expanded);
-    n.has(model) ? n.delete(model) : n.add(model);
+    if (n.has(model)) n.delete(model); else n.add(model);
     setExpanded(n);
   }
 

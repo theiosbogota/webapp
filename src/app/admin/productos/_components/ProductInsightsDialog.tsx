@@ -288,7 +288,7 @@ export default function ProductInsightsDialog({ open, productId, productName, co
                 )}
                 {restocks.length === 0 ? (
                   <div className="text-center py-8 text-[#555] text-sm">
-                    Sin compras registradas. Click en "Registrar compra" para añadir el primer lote.
+                    Sin compras registradas. Click en &ldquo;Registrar compra&rdquo; para añadir el primer lote.
                   </div>
                 ) : (
                   <div className="space-y-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   DollarSign,
@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -218,27 +217,6 @@ export default function AdminPreciosPage() {
     });
     setChanges(newChanges);
     setBulkPercent("");
-  }
-
-  function applyBulkFixed(field: PriceField, value: string) {
-    const num = parseInt(value.replace(/[^0-9]/g, ""), 10);
-    if (isNaN(num) || selectedIds.size === 0) return;
-    const newChanges = new Map(changes);
-    selectedIds.forEach((id) => {
-      const product = products.find((p) => p.id === id);
-      if (!product) return;
-      const existing = newChanges.get(id) || {
-        id,
-        price: product.price,
-        compare_at_price: product.compare_at_price,
-        cost_price: product.cost_price || 0,
-      };
-      newChanges.set(id, {
-        ...existing,
-        [field]: field === "compare_at_price" && value === "" ? null : num,
-      });
-    });
-    setChanges(newChanges);
   }
 
   async function saveChanges() {

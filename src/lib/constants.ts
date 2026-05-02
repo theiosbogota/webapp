@@ -6,6 +6,10 @@ export const SITE_URL = (
 ).trim().replace(/\/$/, "");
 
 export const IPHONE_MODELS = [
+  "iPhone 17 Pro Max",
+  "iPhone 17 Pro",
+  "iPhone 17 Plus",
+  "iPhone 17",
   "iPhone 16 Pro Max",
   "iPhone 16 Pro",
   "iPhone 16 Plus",

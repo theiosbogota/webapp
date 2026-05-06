@@ -69,6 +69,56 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * Auto-corrects product name typos and capitalization.
+ * - "iphone" / "IPHONE" / "Iphone" → "iPhone"
+ * - "pro max" / "PRO MAX" → "Pro Max"
+ * - "pro" / "plus" / "mini" → "Pro" / "Plus" / "Mini"
+ * - "256gb" / "1tb" → "256GB" / "1TB"
+ * - colors: "titanio natural", "negro", "ultramar", "naranja cósmico", etc. → Title Case
+ * - Multiple spaces → single space; trim
+ */
+const COLOR_WORDS = [
+  "titanio", "natural", "azul", "blanco", "negro", "desierto", "rosa",
+  "verde", "azulado", "ultramar", "estrella", "medianoche", "morado",
+  "profundo", "espacial", "plata", "oro", "naranja", "cosmico", "cósmico",
+  "deep", "blue", "cosmic", "orange", "silver", "white", "black",
+];
+export function normalizeProductName(raw: string): string {
+  if (!raw) return raw;
+  let s = raw.trim().replace(/\s+/g, " ");
+
+  // Fix iPhone capitalization (case-insensitive, even if user wrote "ipone" or "iphon")
+  s = s.replace(/\b(?:iphone|ipone|iphon|i-phone|aifon|aifono)\b/gi, "iPhone");
+
+  // Fix iPad
+  s = s.replace(/\b(?:ipad|i-pad)\b/gi, "iPad");
+
+  // Capitalize Pro Max / Pro / Plus / Mini
+  s = s.replace(/\bpro\s+max\b/gi, "Pro Max");
+  s = s.replace(/\bpro\b/gi, "Pro");
+  s = s.replace(/\bplus\b/gi, "Plus");
+  s = s.replace(/\bmini\b/gi, "Mini");
+  s = s.replace(/\bmax\b/gi, "Max");
+
+  // Storage: "256gb" → "256GB", "1tb" → "1TB", "128 gb" → "128GB"
+  s = s.replace(/\b(\d+)\s*gb\b/gi, "$1GB");
+  s = s.replace(/\b(\d+)\s*tb\b/gi, "$1TB");
+
+  // Conditions
+  s = s.replace(/\bnuevo\b/gi, "Nuevo");
+  s = s.replace(/\busado\b/gi, "Usado");
+
+  // Color words → Title Case
+  for (const w of COLOR_WORDS) {
+    const re = new RegExp(`\\b${w}\\b`, "gi");
+    s = s.replace(re, w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+  }
+
+  // Final cleanup
+  return s.replace(/\s+/g, " ").trim();
+}
+
 export default function ProductDialog({ open, product, onClose, onSaved }: Props) {
   const [form, setForm] = useState<ProductFull>(EMPTY);
   const [imageText, setImageText] = useState("");
@@ -123,14 +173,16 @@ export default function ProductDialog({ open, product, onClose, onSaved }: Props
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const slug = form.slug.trim() || slugify(form.name);
+      // Auto-correct name typos and capitalization before saving
+      const correctedName = normalizeProductName(form.name);
+      const slug = form.slug.trim() || slugify(correctedName);
       if (!slug) throw new Error("El slug no puede estar vacío");
-      if (!form.name.trim()) throw new Error("El nombre es obligatorio");
+      if (!correctedName) throw new Error("El nombre es obligatorio");
       if (form.price <= 0) throw new Error("El precio de venta debe ser mayor a 0");
 
       const payload: Partial<ProductFull> = {
         store_id: form.store_id || DEFAULT_STORE_ID,
-        name: form.name.trim(),
+        name: correctedName,
         slug,
         description: form.description || "",
         model: form.model,
@@ -213,7 +265,27 @@ export default function ProductDialog({ open, product, onClose, onSaved }: Props
             <Section title="Identidad" icon={<Package className="h-3.5 w-3.5" />}>
               <Field label="Nombre" required>
                 <input value={form.name} onChange={(e) => update("name", e.target.value)}
+                  onBlur={(e) => {
+                    const fixed = normalizeProductName(e.target.value);
+                    if (fixed !== e.target.value) update("name", fixed);
+                  }}
                   className={inputCls} placeholder="iPhone 16 Pro 256GB Titanio Negro" />
+                {(() => {
+                  const fixed = normalizeProductName(form.name);
+                  if (form.name && fixed !== form.name.trim()) {
+                    return (
+                      <div className="mt-1 text-[11px] text-[#22C55E] flex items-center gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Auto-corrección: <span className="font-bold">{fixed}</span>
+                        <button type="button" onClick={() => update("name", fixed)}
+                          className="ml-auto text-[10px] uppercase tracking-wider text-[#D4A843] hover:text-[#F0D78C]">
+                          Aplicar
+                        </button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Slug (URL)" hint="Auto si lo dejas vacío">

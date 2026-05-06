@@ -207,18 +207,32 @@ function AdminProductosPage() {
 
   function clearSelection() { setSelected(new Set()); }
 
-  async function bulkAction(action: "activate" | "deactivate" | "delete") {
+  async function bulkAction(action: "activate" | "deactivate" | "delete" | "hard_delete") {
     if (selected.size === 0) return;
     const ids = Array.from(selected);
-    const fields: Record<string, unknown> =
-      action === "activate" ? { active: true }
-      : action === "deactivate" ? { active: false }
-      : { deleted_at: new Date().toISOString(), active: false };
-    await fetch('/api/admin/products', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates: ids.map(id => ({ id, ...fields })) }),
-    });
+
+    if (action === "hard_delete") {
+      if (!confirm(`¿Borrar PERMANENTEMENTE ${ids.length} producto(s)? Esta acción no se puede deshacer.`)) return;
+      await fetch('/api/admin/products', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, hard: true }),
+      });
+    } else if (action === "delete") {
+      const fields = { deleted_at: new Date().toISOString(), active: false };
+      await fetch('/api/admin/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: ids.map(id => ({ id, ...fields })) }),
+      });
+    } else {
+      const fields = action === "activate" ? { active: true } : { active: false };
+      await fetch('/api/admin/products', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: ids.map(id => ({ id, ...fields })) }),
+      });
+    }
     clearSelection();
     await loadProducts();
   }
@@ -691,6 +705,11 @@ function AdminProductosPage() {
                   bulkAction("delete");
                 }
               }} className="h-7 bg-[#EF4444] hover:bg-[#DC2626] text-white text-xs">Eliminar</Button>
+              <Button size="sm" onClick={() => bulkAction("hard_delete")}
+                className="h-7 bg-[#7F1D1D] hover:bg-[#991B1B] text-white text-xs"
+                title="Borrar permanentemente — no se puede deshacer">
+                <Trash2 className="h-3 w-3 mr-1" />Borrar 100%
+              </Button>
             </div>
           </div>
         </motion.div>

@@ -6,6 +6,7 @@ export const SITE_URL = (
 ).trim().replace(/\/$/, "");
 
 export const IPHONE_MODELS = [
+  // iPhones
   "iPhone 17 Pro Max",
   "iPhone 17 Pro",
   "iPhone 17 Plus",
@@ -32,6 +33,37 @@ export const IPHONE_MODELS = [
   "iPhone 12 Mini",
   "iPhone SE (3ra Gen)",
   "iPhone SE (2da Gen)",
+  // MacBooks
+  "MacBook Air M5 15",
+  "MacBook Air M5",
+  "MacBook Air M4 15",
+  "MacBook Air M4",
+  "MacBook Pro M5 Max",
+  "MacBook Pro M5 Pro",
+  "MacBook Pro M5",
+  "MacBook Pro M4 Max",
+  "MacBook Pro M4 Pro",
+  "MacBook Pro M4",
+  // iPads
+  "iPad Pro M4 13",
+  "iPad Pro M4",
+  "iPad Air M4 13",
+  "iPad Air M4",
+  "iPad Mini 7",
+  "iPad 11",
+  // AirPods
+  "AirPods Max 2",
+  "AirPods Pro 3",
+  "AirPods 4 ANC",
+  "AirPods 4",
+  // Apple Watch
+  "Apple Watch Ultra 2",
+  "Apple Watch Series 10",
+  "Apple Watch SE 2",
+  // Otros
+  "Apple Pencil Pro",
+  "Apple Pencil USB-C",
+  "MagSafe Charger",
 ] as const;
 
 export const STORAGE_OPTIONS = [

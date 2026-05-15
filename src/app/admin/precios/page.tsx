@@ -13,7 +13,18 @@ import {
   ChevronUp,
   Filter,
   X,
+  Plus,
+  Pencil,
+  Trash2,
+  Copy,
+  BarChart3,
+  Eye,
+  Package,
+  Wallet,
+  TrendingUp,
+  ArchiveRestore,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,11 +37,15 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/client";
 import { formatPrice, CONDITION_LABELS } from "@/lib/constants";
+import ProductDialog, { DeleteConfirmDialog, type ProductFull } from "../productos/_components/ProductDialog";
+import ProductInsightsDialog from "../productos/_components/ProductInsightsDialog";
 
 interface ProductRow {
   id: string;
+  store_id: string;
   name: string;
   slug: string;
+  description: string;
   model: string;
   condition: string;
   storage: string;
@@ -40,9 +55,15 @@ interface ProductRow {
   cost_price: number;
   stock: number;
   active: boolean;
+  featured: boolean;
   images: string[];
   category: { name: string } | null;
   store: { name: string } | null;
+  deleted_at: string | null;
+  purchase_notes?: string | null;
+  last_purchased_at?: string | null;
+  imeis?: string | null;
+  supplier?: string | null;
 }
 
 interface PriceChange {
@@ -70,22 +91,109 @@ export default function AdminPreciosPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [bulkPercent, setBulkPercent] = useState<string>("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Dialogs
+  const [editingProduct, setEditingProduct] = useState<ProductFull | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [deletingProduct, setDeletingProduct] = useState<ProductRow | null>(null);
+  const [insightsProduct, setInsightsProduct] = useState<{id: string; name: string; costPrice: number; currentStock: number} | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [showDeleted]);
 
   async function loadProducts() {
     setLoading(true);
     const supabase = createClient();
-    const { data } = await supabase
+    let q = supabase
       .from("products")
       .select("*, category:categories(name), store:stores(name)")
-      .eq("active", true)
-      .gt("stock", 0)
       .order("model", { ascending: true });
+    if (!showDeleted) {
+      q = q.is("deleted_at", null);
+    }
+    const { data } = await q;
     setProducts((data as unknown as ProductRow[]) || []);
     setLoading(false);
+  }
+
+  function openCreate() {
+    setEditingProduct(null);
+    setShowCreateDialog(true);
+  }
+
+  function openEdit(p: ProductRow) {
+    const full: ProductFull = {
+      id: p.id,
+      store_id: p.store_id,
+      name: p.name,
+      slug: p.slug,
+      description: p.description || "",
+      model: p.model,
+      condition: p.condition,
+      storage: p.storage,
+      color: p.color,
+      price: p.price,
+      compare_at_price: p.compare_at_price,
+      cost_price: p.cost_price || 0,
+      stock: p.stock,
+      images: p.images || [],
+      featured: p.featured,
+      active: p.active,
+      purchase_notes: p.purchase_notes,
+      last_purchased_at: p.last_purchased_at,
+      imeis: p.imeis,
+      supplier: p.supplier,
+    };
+    setEditingProduct(full);
+    setShowCreateDialog(true);
+  }
+
+  async function handleDelete() {
+    if (!deletingProduct) return;
+    await fetch("/api/admin/products", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: deletingProduct.id, action: "delete" }),
+    });
+    setDeletingProduct(null);
+    await loadProducts();
+  }
+
+  async function handleRestore(p: ProductRow) {
+    await fetch("/api/admin/products", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: p.id, action: "restore" }),
+    });
+    await loadProducts();
+  }
+
+  async function handleClone(p: ProductRow) {
+    const suffix = Math.random().toString(36).slice(2, 6);
+    const clone = {
+      store_id: p.store_id,
+      name: `${p.name} (copia)`,
+      slug: `${p.slug}-copia-${suffix}`,
+      description: p.description || "",
+      model: p.model,
+      condition: p.condition,
+      storage: p.storage,
+      color: p.color,
+      price: p.price,
+      compare_at_price: p.compare_at_price,
+      cost_price: p.cost_price || 0,
+      stock: 0,
+      images: p.images || [],
+      featured: false,
+      active: false,
+    };
+    await fetch("/api/admin/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ product: clone }),
+    });
+    await loadProducts();
   }
 
   const categories = Array.from(
@@ -284,21 +392,35 @@ export default function AdminPreciosPage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mb-6 flex items-center justify-between"
+        className="mb-6 flex items-center justify-between flex-wrap gap-3"
       >
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#D4A843] to-[#8B6914]">
-            <DollarSign className="h-5 w-5 text-[#0A0A0A]" />
+            <Package className="h-5 w-5 text-[#0A0A0A]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#FAFAFA]">Editor de Precios</h1>
+            <h1 className="text-2xl font-bold text-[#FAFAFA]">Productos</h1>
             <p className="text-sm text-[#888888]">
-              {products.length} productos publicados ·{" "}
-              <span className="text-[#D4A843]">{changeCount} cambio{changeCount !== 1 ? "s" : ""} pendiente{changeCount !== 1 ? "s" : ""}</span>
+              {products.length} producto{products.length !== 1 ? "s" : ""} en catálogo
+              {hasChanges && (
+                <>
+                  {" · "}
+                  <span className="text-[#D4A843]">{changeCount} cambio{changeCount !== 1 ? "s" : ""} pendiente{changeCount !== 1 ? "s" : ""}</span>
+                </>
+              )}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-xs text-[#888] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDeleted}
+              onChange={(e) => setShowDeleted(e.target.checked)}
+              className="accent-[#D4A843]"
+            />
+            Mostrar eliminados
+          </label>
           {hasChanges && (
             <Button
               variant="outline"
@@ -310,36 +432,74 @@ export default function AdminPreciosPage() {
               Revertir
             </Button>
           )}
-          <Button
-            size="sm"
-            disabled={!hasChanges || saving}
-            onClick={saveChanges}
-            className={
-              saved
-                ? "bg-[#22C55E] hover:bg-[#22C55E] text-white"
-                : "bg-[#D4A843] hover:bg-[#F0D78C] text-black"
-            }
-          >
-            {saving ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="h-4 w-4 rounded-full border-2 border-black/20 border-t-black"
-              />
-            ) : saved ? (
-              <>
-                <Check className="h-4 w-4 mr-1" />
-                Guardado
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-1" />
-                Guardar {changeCount > 0 ? `(${changeCount})` : ""}
-              </>
-            )}
-          </Button>
+          {hasChanges ? (
+            <Button
+              size="sm"
+              disabled={saving}
+              onClick={saveChanges}
+              className={
+                saved
+                  ? "bg-[#22C55E] hover:bg-[#22C55E] text-white"
+                  : "bg-[#D4A843] hover:bg-[#F0D78C] text-black"
+              }
+            >
+              {saving ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  className="h-4 w-4 rounded-full border-2 border-black/20 border-t-black"
+                />
+              ) : saved ? (
+                <><Check className="h-4 w-4 mr-1" />Guardado</>
+              ) : (
+                <><Save className="h-4 w-4 mr-1" />Guardar ({changeCount})</>
+              )}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              onClick={openCreate}
+              className="bg-[#D4A843] hover:bg-[#F0D78C] text-black"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nuevo producto
+            </Button>
+          )}
         </div>
       </motion.div>
+
+      {/* Stats bar */}
+      <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+        {(() => {
+          const visible = products.filter((p) => !p.deleted_at);
+          const invested = visible.reduce((s, p) => s + (Number(p.cost_price) || 0) * (Number(p.stock) || 0), 0);
+          const inventoryValue = visible.reduce((s, p) => s + (Number(p.price) || 0) * (Number(p.stock) || 0), 0);
+          const profit = inventoryValue - invested;
+          const margin = invested > 0 ? Math.round((profit / invested) * 100) : 0;
+          const outOfStock = visible.filter((p) => p.stock === 0 && p.active).length;
+          const lowStock = visible.filter((p) => p.stock > 0 && p.stock <= 2 && p.active).length;
+          return (
+            <>
+              <StatCard label="Invertido en stock" value={formatPrice(invested)} icon={Wallet} tint="gray" />
+              <StatCard label="Valor de inventario" value={formatPrice(inventoryValue)} icon={DollarSign} tint="gold" />
+              <StatCard
+                label="Profit potencial"
+                value={formatPrice(profit)}
+                subtitle={invested > 0 ? `${margin}% margen` : "sin datos"}
+                icon={TrendingUp}
+                tint={profit > 0 ? "green" : "red"}
+              />
+              <StatCard
+                label="Alertas"
+                value={`${outOfStock + lowStock}`}
+                subtitle={outOfStock > 0 ? `${outOfStock} sin stock` : lowStock > 0 ? `${lowStock} stock bajo` : "todo OK"}
+                icon={AlertTriangle}
+                tint={outOfStock > 0 ? "red" : lowStock > 0 ? "yellow" : "green"}
+              />
+            </>
+          );
+        })()}
+      </div>
 
       {/* Error banner */}
       {error && (
@@ -541,13 +701,14 @@ export default function AdminPreciosPage() {
                 >
                   Stock <SortIcon field="stock" />
                 </TableHead>
-                <TableHead className="text-[#D4A843] font-semibold w-10" />
+                <TableHead className="text-[#D4A843] font-semibold">Estado</TableHead>
+                <TableHead className="text-[#D4A843] font-semibold text-center min-w-[180px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8 text-[#555555]">
+                  <TableCell colSpan={12} className="text-center py-8 text-[#555555]">
                     No hay productos que coincidan
                   </TableCell>
                 </TableRow>
@@ -673,17 +834,88 @@ export default function AdminPreciosPage() {
                           <span className="text-[10px] text-[#444]">sin costo</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-[#FAFAFA]">{p.stock}</TableCell>
                       <TableCell>
-                        {hasChange && (
-                          <button
-                            onClick={() => revertChange(p.id)}
-                            className="text-[#555] hover:text-[#EF4444] transition-colors"
-                            title="Revertir cambio"
+                        <div className="flex items-center gap-1">
+                          <span className={`text-sm font-mono ${
+                            p.stock === 0 ? "text-[#EF4444] font-bold" :
+                            p.stock <= 2 ? "text-[#F59E0B]" : "text-[#FAFAFA]"
+                          }`}>
+                            {p.stock}
+                          </span>
+                          {p.stock === 0 && p.active && <AlertTriangle className="h-3 w-3 text-[#EF4444]" />}
+                          {p.stock > 0 && p.stock <= 2 && <AlertTriangle className="h-3 w-3 text-[#F59E0B]" />}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-0.5">
+                          {p.deleted_at ? (
+                            <Badge className="border-0 bg-[rgba(239,68,68,0.15)] text-[#EF4444] text-[10px] w-fit">Eliminado</Badge>
+                          ) : p.active ? (
+                            <Badge className="border-0 bg-[rgba(34,197,94,0.15)] text-[#22C55E] text-[10px] w-fit">Activo</Badge>
+                          ) : (
+                            <Badge className="border-0 bg-[rgba(136,136,136,0.15)] text-[#888] text-[10px] w-fit">Borrador</Badge>
+                          )}
+                          {p.featured && <span className="text-[9px] text-[#D4A843]">★ Destacado</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-center gap-1">
+                          {hasChange && (
+                            <button
+                              onClick={() => revertChange(p.id)}
+                              className="p-1.5 rounded-md text-[#555] hover:text-[#EF4444] hover:bg-[rgba(239,68,68,0.1)] transition-colors"
+                              title="Revertir cambio"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <Link
+                            href={`/productos/${p.slug}`}
+                            target="_blank"
+                            className="p-1.5 rounded-md text-[#888] hover:text-[#D4A843] hover:bg-[rgba(212,168,67,0.1)] transition-colors"
+                            title="Ver en el sitio"
                           >
-                            <RotateCcw className="h-3.5 w-3.5" />
+                            <Eye className="h-3.5 w-3.5" />
+                          </Link>
+                          <button
+                            onClick={() => setInsightsProduct({ id: p.id, name: p.name, costPrice: p.cost_price || 0, currentStock: p.stock || 0 })}
+                            className="p-1.5 rounded-md text-[#888] hover:text-[#D4A843] hover:bg-[rgba(212,168,67,0.1)] transition-colors"
+                            title="Ver ventas y compras"
+                          >
+                            <BarChart3 className="h-3.5 w-3.5" />
                           </button>
-                        )}
+                          <button
+                            onClick={() => openEdit(p)}
+                            className="p-1.5 rounded-md text-[#888] hover:text-[#D4A843] hover:bg-[rgba(212,168,67,0.1)] transition-colors"
+                            title="Editar producto completo"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleClone(p)}
+                            className="p-1.5 rounded-md text-[#888] hover:text-[#D4A843] hover:bg-[rgba(212,168,67,0.1)] transition-colors"
+                            title="Clonar producto"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                          {p.deleted_at ? (
+                            <button
+                              onClick={() => handleRestore(p)}
+                              className="p-1.5 rounded-md text-[#888] hover:text-[#22C55E] hover:bg-[rgba(34,197,94,0.1)] transition-colors"
+                              title="Restaurar"
+                            >
+                              <ArchiveRestore className="h-3.5 w-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setDeletingProduct(p)}
+                              className="p-1.5 rounded-md text-[#888] hover:text-[#EF4444] hover:bg-[rgba(239,68,68,0.1)] transition-colors"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -749,6 +981,57 @@ export default function AdminPreciosPage() {
           </div>
         </motion.div>
       )}
+
+      {/* Dialogs */}
+      <ProductDialog
+        open={showCreateDialog}
+        product={editingProduct}
+        onClose={() => { setShowCreateDialog(false); setEditingProduct(null); }}
+        onSaved={loadProducts}
+      />
+      <DeleteConfirmDialog
+        open={!!deletingProduct}
+        productName={deletingProduct?.name || ""}
+        onConfirm={handleDelete}
+        onCancel={() => setDeletingProduct(null)}
+      />
+      {insightsProduct && (
+        <ProductInsightsDialog
+          open
+          productId={insightsProduct.id}
+          productName={insightsProduct.name}
+          costPrice={insightsProduct.costPrice}
+          currentStock={insightsProduct.currentStock}
+          onClose={() => setInsightsProduct(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Stat card component
+// ============================================================
+function StatCard({ label, value, subtitle, icon: Icon, tint }: {
+  label: string; value: string; subtitle?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  tint: "gold" | "green" | "red" | "yellow" | "gray";
+}) {
+  const colors = {
+    gold:   { fg: "text-[#D4A843]", bg: "bg-[rgba(212,168,67,0.08)]", border: "border-[rgba(212,168,67,0.15)]" },
+    green:  { fg: "text-[#22C55E]", bg: "bg-[rgba(34,197,94,0.08)]",  border: "border-[rgba(34,197,94,0.15)]" },
+    red:    { fg: "text-[#EF4444]", bg: "bg-[rgba(239,68,68,0.08)]",  border: "border-[rgba(239,68,68,0.15)]" },
+    yellow: { fg: "text-[#F59E0B]", bg: "bg-[rgba(245,158,11,0.08)]", border: "border-[rgba(245,158,11,0.15)]" },
+    gray:   { fg: "text-[#888]",    bg: "bg-[rgba(136,136,136,0.06)]", border: "border-[rgba(136,136,136,0.15)]" },
+  }[tint];
+  return (
+    <div className={`rounded-xl ${colors.bg} ${colors.border} border p-3`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={`h-3.5 w-3.5 ${colors.fg}`} />
+        <span className="text-[10px] text-[#888] uppercase tracking-wider font-medium">{label}</span>
+      </div>
+      <div className={`text-base font-bold ${colors.fg}`}>{value}</div>
+      {subtitle && <div className="text-[10px] text-[#666] mt-0.5">{subtitle}</div>}
     </div>
   );
 }

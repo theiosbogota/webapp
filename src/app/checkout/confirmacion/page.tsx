@@ -18,7 +18,7 @@ interface OrderItem {
   product_id: string;
   quantity: number;
   unit_price: number;
-  subtotal: number;
+  total: number;
   products?: { name: string } | null;
 }
 
@@ -54,7 +54,7 @@ function ConfirmacionContent() {
       const supabase = createClient();
       const { data } = await supabase
         .from("orders")
-        .select("*, items:order_items(product_id, quantity, unit_price, subtotal, products(name))")
+        .select("*, items:order_items(product_id, quantity, unit_price, total, products(name))")
         .eq("id", orderId)
         .single();
       if (data) {
@@ -79,7 +79,7 @@ function ConfirmacionContent() {
             product_name: i.products?.name || "Producto",
             quantity: i.quantity,
             unit_price: i.unit_price,
-            subtotal: i.subtotal,
+            subtotal: i.total,
           }));
           sendInvoiceEmail({
             orderId: data.id,
@@ -178,7 +178,7 @@ function ConfirmacionContent() {
                         <p className="text-xs text-[#888]">Cant: {item.quantity}</p>
                       </div>
                       <p className="text-sm text-[#D4A843] font-semibold">
-                        {formatPrice(item.subtotal)}
+                        {formatPrice(item.total)}
                       </p>
                     </div>
                   ))}

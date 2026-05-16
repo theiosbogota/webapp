@@ -109,21 +109,22 @@ export async function createOrderAction(data: CheckoutData) {
 
   const admin = getAdminClient();
 
-  // Verify products exist in DB and get real prices
+  // Verify products exist in DB and get real prices + store_id (required for order_items)
   const productIds = data.items.map(item => item.id);
   const { data: dbProducts, error: productErr } = await admin
     .from("products")
-    .select("id, price, name")
+    .select("id, price, name, store_id")
     .in("id", productIds);
 
   if (productErr || !dbProducts || dbProducts.length !== productIds.length) {
     return { error: "Algunos productos ya no están disponibles. Por favor vacía el carrito y agrega los productos nuevamente." };
   }
 
-  const priceMap = new Map(dbProducts.map(p => [p.id, p]));
+  const productMap = new Map(dbProducts.map(p => [p.id, p]));
   const verifiedItems = data.items.map(item => ({
     ...item,
-    price: priceMap.get(item.id)?.price ?? item.price,
+    price: productMap.get(item.id)?.price ?? item.price,
+    store_id: productMap.get(item.id)?.store_id,
   }));
 
   const subtotal = verifiedItems.reduce(
@@ -158,9 +159,10 @@ export async function createOrderAction(data: CheckoutData) {
   const orderItems = verifiedItems.map((item) => ({
     order_id: order.id,
     product_id: item.id,
+    store_id: item.store_id,
     quantity: item.quantity,
     unit_price: item.price,
-    subtotal: item.price * item.quantity,
+    total: item.price * item.quantity,
   }));
 
   const { error: itemsError } = await admin
